@@ -1,6 +1,7 @@
 #include <iostream>
-#include "Tracker.h"
+#include <highgui/highgui.hpp>
 
+#include "Tracker.h"
 #include "BinaryFileStream.h"
 
 using namespace std;
@@ -14,10 +15,8 @@ int main()
 	string pathName = "D:\\Bags\\Data\\IRData\\";
 	Tracker tracker;
 
-	BinaryFileReader fileReader;
-	fileReader.SetFileFullName(pathName + fileName);
-	fileReader.SetFrameSize(640, 512);
-	fileReader.InitFileReader();
+	BinaryFileReader fileReader(FrameWidth, FrameHeight);
+	fileReader.Init(pathName + fileName);
 
 	Mat frame(FrameHeight, FrameWidth, CV_16UC1);
 	fileReader.GetOneFrame(frame);
@@ -41,6 +40,9 @@ int main()
 		}
 	}
 
-	system("Pause");
+	imshow("Frame", showFrame);
+	cv::waitKey(0);
+
+	cv::destroyAllWindows();
 	return 0;
 }
