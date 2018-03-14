@@ -3,6 +3,7 @@
 
 #include "Tracker.h"
 #include "BinaryFileStream.h"
+#include <iomanip>
 
 using namespace std;
 
@@ -11,38 +12,38 @@ using namespace std;
 
 int main()
 {
-	string fileName = "ir_data_file_20171211_155950975.dat";
-	string pathName = "D:\\Bags\\Data\\IRData\\";
+	string fileFullName = "D:\\Bags\\Data\\IRData\\ir_data_file_20171211_155950975.dat";
 	Tracker tracker;
 
 	BinaryFileReader fileReader(FrameWidth, FrameHeight);
-	fileReader.Init(pathName + fileName);
+	fileReader.Init(fileFullName);
 
 	Mat frame(FrameHeight, FrameWidth, CV_16UC1);
-	fileReader.GetOneFrame(frame);
-
-	if(frame.empty())
-	{
-		cout << "Get One Frame Failed!" << endl;
-		system("Pause");
-		return 0;
-	}
 	Mat showFrame(FrameHeight, FrameWidth, CV_8UC1);
 
-	for(auto r = 0; r < FrameHeight; ++r)
+	int frameIndex = 0;
+	while(fileReader.GetOneFrame(frame))
 	{
-		auto ptr = showFrame.ptr<uchar>(r);
-		auto ptr1 = frame.ptr<unsigned short>(r);
-		for(auto c = 0; c < FrameWidth; ++c)
-		{
-			unsigned short pixelValue = ptr1[c];
-			ptr[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
-		}
-	}
+		cout << "Current Frame Index is " << setw(4) << frameIndex++ << endl;
 
-	imshow("Frame", showFrame);
-	cv::waitKey(0);
+		for (auto r = 0; r < FrameHeight; ++r)
+		{
+			auto ptrOriginal = showFrame.ptr<uchar>(r);
+			auto ptrResult = frame.ptr<unsigned short>(r);
+			for (auto c = 0; c < FrameWidth; ++c)
+			{
+				auto pixelValue = ptrResult[c];
+				ptrOriginal[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
+			}
+		}
+
+		imshow("Frame", showFrame);
+		cv::waitKey(10);
+	}
+	cout << "All frame count is " << frameIndex << endl;
 
 	cv::destroyAllWindows();
+
+	system("pause");
 	return 0;
 }

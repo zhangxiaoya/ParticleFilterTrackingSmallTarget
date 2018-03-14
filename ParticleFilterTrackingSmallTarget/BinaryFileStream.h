@@ -9,7 +9,7 @@ using cv::Mat;
 class BinaryFileReader
 {
 public:
-	explicit BinaryFileReader(int frameWidth = 0, int frameHeight = 0)
+	explicit BinaryFileReader(int frameWidth, int frameHeight)
 		: _curFrameIndex(0),
 		  _frameCount(0),
 		  _isAlreadyGetFrameCount(false),
@@ -22,7 +22,7 @@ public:
 
 	void Init(string& fileFullName);
 
-	void GetOneFrame(cv::Mat& frame);
+	bool GetOneFrame(cv::Mat& frame);
 
 private:
 	void SetFileFullName(string& fileFullName);

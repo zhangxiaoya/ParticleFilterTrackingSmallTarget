@@ -19,8 +19,10 @@ void BinaryFileReader::InitFileReader()
 	this->_fin.open(this->_fileFullName, std::ios::binary|std::ios::in);
 }
 
-void BinaryFileReader::GetOneFrame(cv::Mat& frame)
+bool BinaryFileReader::GetOneFrame(cv::Mat& frame)
 {
+	if(_curFrameIndex >= _frameCount)
+		return false;
 	if(this->_fin.is_open())
 	{
 		auto frameData = new unsigned char[this->_imageDataSize];
@@ -29,7 +31,10 @@ void BinaryFileReader::GetOneFrame(cv::Mat& frame)
 		memcpy(frame.data, frameData, this->_imageDataSize);
 
 		delete[] frameData;
+		_curFrameIndex++;
+		return true;
 	}
+	return false;
 }
 
 void BinaryFileReader::GetFrameCount()
@@ -39,10 +44,11 @@ void BinaryFileReader::GetFrameCount()
 		if (this->_fin.is_open())
 		{
 			auto curPos = this->_fin.tellg();
-			this->_fin.seekg(std::ios::beg);
+			this->_fin.seekg(0, std::ios::beg);
 			auto begPos = this->_fin.tellg();
-			this->_fin.seekg(std::ios::end);
+			this->_fin.seekg(0, std::ios::end);
 			auto len = this->_fin.tellg() - begPos;
+			this->_fin.seekg(0, std::ios::beg);
 
 			this->_frameCount = len / this->_imageDataSize;
 			this->_isAlreadyGetFrameCount = true;
