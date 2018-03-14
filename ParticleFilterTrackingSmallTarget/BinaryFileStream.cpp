@@ -5,7 +5,7 @@ void BinaryFileReader::SetFileFullName(std::string& fileFullName)
 	this->_fileFullName = fileFullName;
 }
 
-void BinaryFileReader::SetFrameSize(unsigned width, unsigned height)
+void BinaryFileReader::SetFrameSize(unsigned short width, unsigned short height)
 {
 	this->_height = height;
 	this->_width = width;
@@ -15,20 +15,18 @@ void BinaryFileReader::SetFrameSize(unsigned width, unsigned height)
 
 void BinaryFileReader::InitFileReader()
 {
-	this->_fin.open(this->_fileFullName);
+	this->_fin.open(this->_fileFullName, std::ios::binary|std::ios::in);
 }
 
-Mat BinaryFileReader::GetOneFrame()
+void BinaryFileReader::GetOneFrame(cv::Mat& frame)
 {
-	Mat frame;
 	if(this->_fin.is_open())
 	{
 		auto frameData = new unsigned char[this->_imageDataSize];
 		this->_fin.read(reinterpret_cast<char*>(frameData), this->_imageDataSize);
 
-		frame = Mat(this->_height, this->_width, CV_8SC1, frameData);
+		memcpy(frame.data, frameData, this->_imageDataSize);
 
 		delete[] frameData;
 	}
-	return frame;
 }

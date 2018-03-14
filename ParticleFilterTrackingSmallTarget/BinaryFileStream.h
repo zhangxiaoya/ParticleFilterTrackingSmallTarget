@@ -18,11 +18,11 @@ public:
 
 	void SetFileFullName(string& fileFullName);
 
-	void SetFrameSize(unsigned width, unsigned height);
+	void SetFrameSize(unsigned short width, unsigned short height);
 
 	void InitFileReader();
 
-	Mat GetOneFrame();
+	void GetOneFrame(cv::Mat& frame);
 
 private:
 	std::string _fileFullName;
@@ -30,10 +30,10 @@ private:
 	unsigned int _curFrameIndex;
 	unsigned int _frameCount;
 
-	unsigned char _width;
-	unsigned char _height;
+	unsigned short _width;
+	unsigned short _height;
 
-	unsigned short _imageSize;
+	unsigned int _imageSize;
 	unsigned int _imageDataSize;
 
 	const static unsigned char _pixelSize = 2;

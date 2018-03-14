@@ -5,6 +5,9 @@
 
 using namespace std;
 
+#define FrameWidth 640
+#define FrameHeight 512
+
 int main()
 {
 	string fileName = "ir_data_file_20171211_155950975.dat";
@@ -16,7 +19,8 @@ int main()
 	fileReader.SetFrameSize(640, 512);
 	fileReader.InitFileReader();
 
-	auto frame = fileReader.GetOneFrame();
+	Mat frame(FrameHeight, FrameWidth, CV_16UC1);
+	fileReader.GetOneFrame(frame);
 
 	if(frame.empty())
 	{
@@ -24,17 +28,16 @@ int main()
 		system("Pause");
 		return 0;
 	}
-	Mat showFrame(640, 512, CV_8UC1);
-	for(auto r = 0; r < 512; ++r)
-	{
-		cv::Ptr<unsigned short> ptrOriginalFrame = frame.ptr<unsigned short>(r);
-		cv::Ptr<uchar> ptrDstFrame = frame.ptr<uchar>(r);
+	Mat showFrame(FrameHeight, FrameWidth, CV_8UC1);
 
-		for(auto c = 0; c < 640; ++c)
+	for(auto r = 0; r < FrameHeight; ++r)
+	{
+		auto ptr = showFrame.ptr<uchar>(r);
+		auto ptr1 = frame.ptr<unsigned short>(r);
+		for(auto c = 0; c < FrameWidth; ++c)
 		{
-			unsigned short pixelValue = ptrOriginalFrame[c];
-			unsigned lowPixelValue = static_cast<uchar>(pixelValue & 0x00ff);
-			ptrDstFrame[c] = lowPixelValue;
+			unsigned short pixelValue = ptr1[c];
+			ptr[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
 		}
 	}
 
