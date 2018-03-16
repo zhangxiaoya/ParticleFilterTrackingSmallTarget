@@ -13,7 +13,6 @@ using namespace std;
 int main()
 {
 	string fileFullName = "D:\\Bags\\Data\\IRData\\ir_data_file_20171211_155950975.dat";
-	Tracker tracker;
 
 	BinaryFileReader fileReader(FrameWidth, FrameHeight);
 	fileReader.Init(fileFullName);
