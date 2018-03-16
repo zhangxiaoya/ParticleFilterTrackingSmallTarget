@@ -5,7 +5,8 @@
 
 int Tracker::ParticleTracking(unsigned short* image, int width, int height, int& centerX, int& centerY, int& halfWidthOfTarget, int& halfHeightOfTarget, float& max_weight)
 {
-	SpaceState EState;
+	SpaceState estimateState;
+
 	// 重采样
 	ReSelect(_particles, _particleWeights, _nParticle);
 
@@ -16,15 +17,15 @@ int Tracker::ParticleTracking(unsigned short* image, int width, int height, int&
 	Observe(_particles, _particleWeights, _nParticle, image, width, height);
 
 	// 估计：对状态量进行估计，提取位置量
-	Estimation(_particles, _particleWeights, _nParticle, EState);
+	Estimation(_particles, _particleWeights, _nParticle, estimateState);
 
-	centerX = EState.centerX;
-	centerY = EState.centerY;
-	halfWidthOfTarget = EState._halfWidthOfTarget;
-	halfHeightOfTarget = EState._halfHeightOfTarget;
+	centerX = estimateState.centerX;
+	centerY = estimateState.centerY;
+	halfWidthOfTarget = estimateState._halfWidthOfTarget;
+	halfHeightOfTarget = estimateState._halfHeightOfTarget;
 
 	// 模型更新
-	ModelUpdate(EState, _modelHist, _nbin, _piThreshold, image, width, height);
+	ModelUpdate(estimateState, _modelHist, _nbin, _piThreshold, image, width, height);
 
 	// 计算最大权重值
 	max_weight = _particleWeights[0];
@@ -92,20 +93,21 @@ int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTar
 	return 1;
 }
 
-void Tracker::ReSelect(SpaceState* state, float* weight, int N)
+void Tracker::ReSelect(SpaceState* state, float* weight, int nParticle)
 {
 	// 存储新的粒子
-	SpaceState* newParticles = new SpaceState[N];
+	SpaceState* newParticles = new SpaceState[nParticle];
+
 	// 统计的随机数所再区间的索引
-	int* resampleIndex = new int[N];
+	int* resampleIndex = new int[nParticle];
 
 	// 根据权重重新采样
-	ImportanceSampling(weight, resampleIndex, N);
+	ImportanceSampling(weight, resampleIndex, nParticle);
 
-	for (auto i = 0; i < N; i++)
+	for (auto i = 0; i < nParticle; i++)
 		newParticles[i] = state[resampleIndex[i]];
 
-	for (auto i = 0; i < N; i++)
+	for (auto i = 0; i < nParticle; i++)
 		state[i] = newParticles[i];
 
 	delete[] newParticles;
@@ -288,16 +290,11 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
 		hist[i] = hist[i] / f;
 }
 
-/*
-传播：根据系统状态方程求取状态预测量
-状态方程为： S(t) = A S(t-1) + W(t-1)
-width(t-1)为高斯噪声
-输入参数：
-SPACESTATE * state：      待求的状态量数组
-int N：                   待求状态个数
-输出参数：
-SPACESTATE * state：      更新后的预测状态量数组
-*/
+/**
+ * \brief 根据系统状态方程求取状态预测量, S(t) = A S(t-1) + W(t-1), 其中W(t-1)表示高斯噪声
+ * \param state 待求的状态量数组
+ * \param NParticle 待求状态个数
+ */
 void Tracker::Propagate(SpaceState* state, int NParticle)
 {
 	float randomNumbers[7];
@@ -353,15 +350,13 @@ void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned 
 	delete[] hist;
 }
 
-/*
-计算Bhattacharyya系数
-输入参数：
-float * p, * q：      两个彩色直方图密度估计
-int bins：            直方图条数
-返回值：
-Bhattacharyya系数
-*/
-float Tracker::CalcuBhattacharyya(float* histA, float* histB)
+/**
+ * \brief 计算Bhattachryya系数
+ * \param histA 直方图A
+ * \param histB 直方图B
+ * \return Bhattacharyya系数
+ */
+float Tracker::CalcuBhattacharyya(float* histA, float* histB) const
 {
 	float rho = 0.0;
 	for (auto i = 0; i < _nbin; i++)
@@ -369,10 +364,10 @@ float Tracker::CalcuBhattacharyya(float* histA, float* histB)
 	return rho;
 }
 
-float Tracker::CalcuWeightedPi(float rho)
+float Tracker::CalcuWeightedPi(float rho) const
 {
-	float d2 = 1 - rho;
-	float pi_n = static_cast<float>(exp(-d2 / SIGMA2));
+	auto d2 = 1 - rho;
+	auto pi_n = static_cast<float>(exp(-d2 / SIGMA2));
 	return pi_n;
 }
 
@@ -428,18 +423,18 @@ float * TargetHist：    目标直方图
 int bins：              直方图条数
 float PiT：             阈值（权重阈值）
 unsigned char * img：   图像数据，RGB形式
-int width, height：              图像宽高
+int width, height：     图像宽高
 输出：
 float * TargetHist：    更新的目标直方图
 ************************************************************/
 void Tracker::ModelUpdate(SpaceState EstState, float* TargetHist, int bins, float PiT, unsigned short* imgData, int width, int height)
 {
-	float * EstHist = new float[bins];
+	auto estimatedHist = new float[bins];
 
 	// (1)在估计值处计算目标直方图
-	CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imgData, width, height, EstHist);
+	CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imgData, width, height, estimatedHist);
 	// (2)计算Bhattacharyya系数
-	float Bha = CalcuBhattacharyya(EstHist, TargetHist);
+	float Bha = CalcuBhattacharyya(estimatedHist, TargetHist);
 	// (3)计算概率权重
 	float Pi_E = CalcuWeightedPi(Bha);
 
@@ -447,9 +442,8 @@ void Tracker::ModelUpdate(SpaceState EstState, float* TargetHist, int bins, floa
 	{
 		for (auto i = 0; i < bins; i++)
 		{
-			TargetHist[i] = static_cast<float>((1.0 - ALPHA_COEFFICIENT) * TargetHist[i]
-				+ ALPHA_COEFFICIENT * EstHist[i]);
+			TargetHist[i] = static_cast<float>((1.0 - ALPHA_COEFFICIENT) * TargetHist[i] + ALPHA_COEFFICIENT * estimatedHist[i]);
 		}
 	}
-	delete[] EstHist;
+	delete[] estimatedHist;
 }

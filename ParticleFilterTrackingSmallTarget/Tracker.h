@@ -51,9 +51,9 @@ private:
 
 	void Observe(SpaceState* state, float* weight, int NParticle, unsigned short* imgData, int width, int height);
 
-	float CalcuBhattacharyya(float* histA, float* histB);
+	float CalcuBhattacharyya(float* histA, float* histB) const;
 
-	float CalcuWeightedPi(float rho);
+	float CalcuWeightedPi(float rho) const;
 
 	void Estimation(SpaceState* particles, float* weights, int NParticle, SpaceState& EstState);
 
