@@ -35,7 +35,7 @@ public:
 private:
 	void ReSelect(SpaceState* state, float* weight, int nParticle);
 
-	void ImportanceSampling(float* wights, int* ResampleIndex, int nParticle);
+	static void ImportanceSampling(float* wights, int* ResampleIndex, int nParticle);
 
 	static void NormalizeCumulatedWeight(float* weight, float* cumulateWeight, int nParticle);
 
@@ -45,7 +45,7 @@ private:
 
 	static int BinearySearch(float value, float* NCumuWeight, int N);
 
-	void CalcuModelHistogram(int centerX, int centerY, int halfWidthOfTarget, int halfHeightofTarget, unsigned short* imgData, int width, int height);
+	void CalcuModelHistogram(int centerX, int centerY, int halfWidthOfTarget, int halfHeightofTarget, unsigned short* imgData, int width, int height, float* hist);
 
 	void Propagate(SpaceState* state, int nParticle);
 

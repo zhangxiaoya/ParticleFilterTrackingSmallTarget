@@ -59,7 +59,7 @@ int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTar
 		return (-1);
 
 	// ¼ÆËãÄ¿±êÄ£°åÖ±·½Í¼
-	CalcuModelHistogram(targetCenterX, targetCenterY, halfWidthOfTarget, halfHeightOfTarget, imgData, width, height);
+	CalcuModelHistogram(targetCenterX, targetCenterY, halfWidthOfTarget, halfHeightOfTarget, imgData, width, height, _modelHist);
 
 	// ³õÊ¼»¯Á£×Ó×´Ì¬(ÒÔ(x0,y0,1,1,Wx,Hy,0.1)ÎªÖĞĞÄ³ÊN(0,0.4)ÕıÌ¬·Ö²¼)
 	_particles[0].centerX = targetCenterX;
@@ -96,7 +96,7 @@ void Tracker::ReSelect(SpaceState* state, float* weight, int N)
 {
 	// ´æ´¢ĞÂµÄÁ£×Ó
 	SpaceState* newParticles = new SpaceState[N];
-	// Í³¼ÆµÄËæ»úÊıËùµôÇø¼äµÄË÷Òı
+	// Í³¼ÆµÄËæ»úÊıËùÔÙÇø¼äµÄË÷Òı
 	int* resampleIndex = new int[N];
 
 	// ¸ù¾İÈ¨ÖØÖØĞÂ²ÉÑù
@@ -235,11 +235,12 @@ int bins£º                                  ²ÊÉ«Ö±·½Í¼µÄÌõÊıR_BIN*G_BIN*B_BIN£¨Õ
 void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
                                   int halfWidthOfTarget, int halfHeightOfTarget,
                                   unsigned short* imgData,
-                                  int width, int height)
+                                  int width, int height,
+                                  float* hist)
 {
 	// Ö±·½Í¼¸÷¸öÖµ¸³0
 	for (auto i = 0; i < _nbin; i++)
-		_modelHist[i] = 0.0;
+		hist[i] = 0.0;
 
 	// ¿¼ÂÇÌØÊâÇé¿ö£ºcenterX, centerYÔÚÍ¼ÏñÍâÃæ£¬»òÕß£¬halfWidthOfTarget<=0, halfHeightOfTarget<=0,´ËÊ±Ç¿ÖÆÁî²ÊÉ«Ö±·½Í¼Îª0
 	if ((targetCenterX < 0) || (targetCenterX >= width) || (targetCenterY < 0) || (targetCenterY >= height) || (halfWidthOfTarget <= 0) || (halfHeightOfTarget <= 0))
@@ -278,13 +279,13 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
 			f = f + k;
 
 			// ¼ÆËãºËÃÜ¶È¼ÓÈ¨»Ò¶ÈÖ±·½Í¼
-			_modelHist[index] = _modelHist[index] + k;
+			hist[index] = hist[index] + k;
 		}
 	}
 
 	// ¹éÒ»»¯Ö±·½Í¼
 	for (auto i = 0; i < _nbin; i++)
-		_modelHist[i] = _modelHist[i] / f;
+		hist[i] = hist[i] / f;
 }
 
 /*
@@ -342,7 +343,7 @@ void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned 
 	for (auto i = 0; i < NParticle; i++)
 	{
 		// (1) ¼ÆËã²ÊÉ«Ö±·½Í¼·Ö²¼
-		CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget, state[i]._halfHeightOfTarget, imgData, W, H);
+		CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget, state[i]._halfHeightOfTarget, imgData, W, H, hist);
 		// (2) BhattacharyyaÏµÊı
 		float rho = CalcuBhattacharyya(hist, _modelHist);
 		// (3) ¸ù¾İ¼ÆËãµÃµÄBhattacharyyaÏµÊı¼ÆËã¸÷¸öÈ¨ÖØÖµ
@@ -436,7 +437,7 @@ void Tracker::ModelUpdate(SpaceState EstState, float* TargetHist, int bins, floa
 	float * EstHist = new float[bins];
 
 	// (1)ÔÚ¹À¼ÆÖµ´¦¼ÆËãÄ¿±êÖ±·½Í¼
-	CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imgData, width, height);
+	CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imgData, width, height, EstHist);
 	// (2)¼ÆËãBhattacharyyaÏµÊı
 	float Bha = CalcuBhattacharyya(EstHist, TargetHist);
 	// (3)¼ÆËã¸ÅÂÊÈ¨ÖØ
