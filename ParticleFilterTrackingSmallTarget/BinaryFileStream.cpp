@@ -1,4 +1,22 @@
 #include "BinaryFileStream.h"
+#include <iostream>
+
+BinaryFileReader::~BinaryFileReader()
+{
+	this->ReleaseReader();
+}
+
+void BinaryFileReader::ReleaseReader()
+{
+	this->_fin.close();
+}
+
+void BinaryFileReader::ResetFileStream(string fileFullName)
+{
+	SetFileFullName(fileFullName);
+	InitFileReader();
+	this->_curFrameIndex = 0;
+}
 
 void BinaryFileReader::Init(string& fileFullName)
 {
@@ -16,7 +34,18 @@ void BinaryFileReader::SetFileFullName(std::string& fileFullName)
 
 void BinaryFileReader::InitFileReader()
 {
-	this->_fin.open(this->_fileFullName, std::ios::binary|std::ios::in);
+	if (this->_fin.is_open())
+	{
+		this->_fin.close();
+	}
+	try
+	{
+		this->_fin.open(this->_fileFullName, std::ios::binary | std::ios::in);
+	}
+	catch (std::ios::failure& e)
+	{
+		std::cout << "Exception opening / reading / closing file\n";
+	}
 }
 
 bool BinaryFileReader::GetOneFrame(cv::Mat& frame)

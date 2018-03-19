@@ -12,7 +12,10 @@ using namespace std;
 
 int main()
 {
-	string fileFullName = "D:\\Bags\\Data\\IRData\\ir_data_file_20171211_155950975.dat";
+	string fileFullNameFormat = "D:\\Bags\\Data\\IRData\\trackingData\\Segment_%02d.dat";
+	string fileFullName = "D:\\Bags\\Data\\IRData\\trackingData\\Segment_00.dat";
+
+	char fileFullNameArr[200];
 
 	BinaryFileReader fileReader(FrameWidth, FrameHeight);
 	fileReader.Init(fileFullName);
@@ -20,26 +23,38 @@ int main()
 	Mat frame(FrameHeight, FrameWidth, CV_16UC1);
 	Mat showFrame(FrameHeight, FrameWidth, CV_8UC1);
 
-	int frameIndex = 0;
-	while(fileReader.GetOneFrame(frame))
+	for(auto fileIdx = 0; fileIdx < 42; ++ fileIdx)
 	{
-		cout << "Current Frame Index is " << setw(4) << frameIndex++ << endl;
 
-		for (auto r = 0; r < FrameHeight; ++r)
+		sprintf_s(fileFullNameArr, fileFullNameFormat.c_str(), fileIdx);
+
+		fileReader.ResetFileStream(string(fileFullNameArr));
+
+		cout << "File Index = " << setw(6) << fileIdx << endl;
+
+		int frameIndex = 0;
+		while (fileReader.GetOneFrame(frame))
 		{
-			auto ptrOriginal = showFrame.ptr<uchar>(r);
-			auto ptrResult = frame.ptr<unsigned short>(r);
-			for (auto c = 0; c < FrameWidth; ++c)
-			{
-				auto pixelValue = ptrResult[c];
-				ptrOriginal[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
-			}
-		}
+//			cout << "Current Frame Index is " << setw(4) << frameIndex++ << endl;
 
-		imshow("Frame", showFrame);
-		cv::waitKey(10);
+			frameIndex++;
+			for (auto r = 0; r < FrameHeight; ++r)
+			{
+				auto ptrOriginal = showFrame.ptr<uchar>(r);
+				auto ptrResult = frame.ptr<unsigned short>(r);
+				for (auto c = 0; c < FrameWidth; ++c)
+				{
+					auto pixelValue = ptrResult[c];
+					ptrOriginal[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
+				}
+			}
+
+			imshow("Frame", showFrame);
+			cv::waitKey(1);
+		}
+		cout << "All frame count is " << frameIndex << endl;
+		cv::waitKey(1);
 	}
-	cout << "All frame count is " << frameIndex << endl;
 
 	cv::destroyAllWindows();
 

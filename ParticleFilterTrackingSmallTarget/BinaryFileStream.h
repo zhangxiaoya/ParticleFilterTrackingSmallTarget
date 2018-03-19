@@ -20,6 +20,12 @@ public:
 	{
 	}
 
+	~BinaryFileReader();
+
+	void ReleaseReader();
+
+	void ResetFileStream(string fileFullName);
+
 	void Init(string& fileFullName);
 
 	bool GetOneFrame(cv::Mat& frame);
