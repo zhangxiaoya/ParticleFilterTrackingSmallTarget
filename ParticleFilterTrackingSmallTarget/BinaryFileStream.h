@@ -16,7 +16,8 @@ public:
 		  _width(frameWidth),
 		  _height(frameHeight),
 		  _imageSize(frameHeight * frameWidth),
-		  _imageDataSize(_imageSize * _pixelSize)
+		  _imageDataSize(_imageSize * _pixelSize),
+		  _imgData(nullptr)
 	{
 	}
 
@@ -26,9 +27,9 @@ public:
 
 	void ResetFileStream(string fileFullName);
 
-	void Init(string& fileFullName);
+	void Init(string fileFullName);
 
-	bool GetOneFrame(cv::Mat& frame);
+	bool GetOneFrame(cv::Mat& frame, unsigned short*& imgData);
 
 private:
 	void SetFileFullName(string& fileFullName);
@@ -50,6 +51,7 @@ private:
 	unsigned int _imageSize;
 	unsigned int _imageDataSize;
 
+	unsigned short* _imgData;
 
 	const static unsigned char _pixelSize = 2;
 };

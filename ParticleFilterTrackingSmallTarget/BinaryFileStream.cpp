@@ -4,6 +4,7 @@
 BinaryFileReader::~BinaryFileReader()
 {
 	this->ReleaseReader();
+	delete[] this->_imgData;
 }
 
 void BinaryFileReader::ReleaseReader()
@@ -18,13 +19,15 @@ void BinaryFileReader::ResetFileStream(string fileFullName)
 	this->_curFrameIndex = 0;
 }
 
-void BinaryFileReader::Init(string& fileFullName)
+void BinaryFileReader::Init(string fileFullName)
 {
 	SetFileFullName(fileFullName);
 
 	InitFileReader();
 
 	GetFrameCount();
+
+	this->_imgData = reinterpret_cast<unsigned short*>(new unsigned char[this->_imageDataSize]);
 }
 
 void BinaryFileReader::SetFileFullName(std::string& fileFullName)
@@ -48,18 +51,18 @@ void BinaryFileReader::InitFileReader()
 	}
 }
 
-bool BinaryFileReader::GetOneFrame(cv::Mat& frame)
+bool BinaryFileReader::GetOneFrame(cv::Mat& frame, unsigned short*& imgData)
 {
 	if(_curFrameIndex >= _frameCount)
 		return false;
 	if(this->_fin.is_open())
 	{
-		auto frameData = new unsigned char[this->_imageDataSize];
-		this->_fin.read(reinterpret_cast<char*>(frameData), this->_imageDataSize);
 
-		memcpy(frame.data, frameData, this->_imageDataSize);
+		this->_fin.read(reinterpret_cast<char*>(this->_imgData), this->_imageDataSize);
 
-		delete[] frameData;
+		memcpy(frame.data, this->_imgData, this->_imageDataSize);
+		imgData = this->_imgData;
+
 		_curFrameIndex++;
 		return true;
 	}
