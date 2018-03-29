@@ -10,14 +10,14 @@ class BinaryFileReader
 {
 public:
 	explicit BinaryFileReader(int frameWidth, int frameHeight)
-		: _curFrameIndex(0),
-		  _frameCount(0),
-		  _isAlreadyGetFrameCount(false),
-		  _width(frameWidth),
-		  _height(frameHeight),
-		  _imageSize(frameHeight * frameWidth),
-		  _imageDataSize(_imageSize * _pixelSize),
-		  _imgData(nullptr)
+			: _curFrameIndex(0),
+			  _frameCount(0),
+			  _isAlreadyGetFrameCount(false),
+			  _width(frameWidth),
+			  _height(frameHeight),
+			  _imageSize(frameHeight * frameWidth),
+			  _imageDataSize(_imageSize * _pixelSize),
+			  _imgData(nullptr)
 	{
 	}
 
