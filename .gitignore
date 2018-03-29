@@ -18,6 +18,8 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+cmake-build-debug/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

@@ -1,7 +1,6 @@
-#include <iostream>
-#include <highgui/highgui.hpp>
+	#include <iostream>
+#include <opencv2/highgui/highgui.hpp>
 
-#include "Tracker.h"
 #include "BinaryFileStream.h"
 #include <iomanip>
 
@@ -10,24 +9,24 @@
 
 int main()
 {
-	// ÎÄ¼þÃû¸ñÊ½¶¨Òå
+	// ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½
 	string fileFullNameFormat = "D:\\Bags\\Data\\IRData\\trackingData\\Segment_%02d.dat";
-	// ÎÄ¼þÃû×Ö·û´®´æ´¢
+	// ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½æ´¢
 	char fileFullNameArr[200];
 
-	// ³õÊ¼»¯²Ù×÷
-	// ³õÊ¼»¯ÎÄ¼þÃû
+	// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½
 	sprintf_s(fileFullNameArr, fileFullNameFormat.c_str(), 0);
-	// ³õÊ¼»¯ÎÄ¼þÁ÷¶ÁÈ¡¶ÔÏó
+	// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½
 	BinaryFileReader fileReader(FrameWidth, FrameHeight);
 	fileReader.Init(string(fileFullNameArr));
 
-	// ¶¨ÒåÍ¼ÏñÖ¡
+	// ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½Ö¡
 	Mat frame(FrameHeight, FrameWidth, CV_16UC1);
-	// ¶¨Òå¿ÉÏÔÊ¾Í¼ÏñÖ¡
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾Í¼ï¿½ï¿½Ö¡
 	Mat showFrame(FrameHeight, FrameWidth, CV_8UC1);
 
-	// ³õÊ¼»¯³õÊ¼Î»ÖÃ
+	// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Ê¼Î»ï¿½ï¿½
 	cv::Rect rect(304, 259, 4, 4);
 	Tracker tracker(FrameWidth,FrameHeight);
 
@@ -40,17 +39,17 @@ int main()
 	int halfWidthOfTarget = 5;
 	int halfHeightOfTarget = 5;
 
-	// Ñ­»·±éÀúËùÓÐµÄÍ¼ÏñÎÄ¼þ
+	// Ñ­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½Í¼ï¿½ï¿½ï¿½Ä¼ï¿½
 	for(auto fileIdx = 9; fileIdx < 10; ++ fileIdx)
 	{
-		// ¸ñÊ½»¯ÎÄ¼þÃû
-		sprintf_s(fileFullNameArr, fileFullNameFormat.c_str(), fileIdx);
-		// ¶ÁÈ¡ÎÄ¼þÁ÷¶ÔÏóÖØÐÂ³õÊ¼»¯¶ÁÈ¡²Ù×÷
+
+		sprintf(fileFullNameArr, fileFullNameFormat.c_str(), fileIdx);
+
 		fileReader.ResetFileStream(string(fileFullNameArr));
-		// ´òÓ¡ÎÄ¼þ±àºÅ
+		// ï¿½ï¿½Ó¡ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½
 		std::cout << "File Index = " << std::setw(6) << fileIdx << std::endl;
 
-		// Ñ­»·±éÀú¸ÃÎÄ¼þÖÐµÄËùÓÐÍ¼Ïñ
+		// Ñ­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½Ðµï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½
 		auto frameIndex = 0;
 
 		unsigned short* imgDataPointer = nullptr;
@@ -66,7 +65,7 @@ int main()
 			auto trackingStatus = tracker.ParticleTracking(imgDataPointer, FrameWidth, FrameHeight, centerX, centerY, halfWidthOfTarget, halfHeightOfTarget, maxWeight);
 
 
-			// ¿ÉÊÓ»¯µÍ8Î»ÏñËØÐÅÏ¢
+			// ï¿½ï¿½ï¿½Ó»ï¿½ï¿½ï¿½8Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
 			for (auto r = 0; r < FrameHeight; ++r)
 			{
 				auto ptrOriginal = showFrame.ptr<uchar>(r);
@@ -97,9 +96,8 @@ int main()
 		cv::waitKey(1);
 	}
 
-	// Ïú»ÙÏÔÊ¾Í¼Ïñ´°¿Ú¾ä±ú
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾Í¼ï¿½ñ´°¿Ú¾ï¿½ï¿½
 	cv::destroyAllWindows();
 
-	system("pause");
 	return 0;
 }
