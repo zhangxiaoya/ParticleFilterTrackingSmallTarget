@@ -37,8 +37,8 @@ int main()
 	int centerY = 261;
 	int width = FrameWidth;
 	int height = FrameHeight;
-	int halfWidthOfTarget = 2;
-	int halfHeightOfTarget = 2;
+	int halfWidthOfTarget = 5;
+	int halfHeightOfTarget = 5;
 
 	// 循环遍历所有的图像文件
 	for(auto fileIdx = 9; fileIdx < 10; ++ fileIdx)
@@ -58,7 +58,7 @@ int main()
 		{
 			if(isFirstFrame)
 			{
-				tracker.Initialize(306, 261, 2, 2, imgDataPointer, FrameWidth, FrameHeight);
+				tracker.Initialize(306, 261, halfWidthOfTarget, halfHeightOfTarget, imgDataPointer, FrameWidth, FrameHeight);
 				isFirstFrame = false;
 			}
 			frameIndex++;
@@ -91,7 +91,7 @@ int main()
 			}
 
 			imshow("Frame", showFrame);
-			cv::waitKey(1000);
+			cv::waitKey(100);
 		}
 		std::cout << "All frame count is " << frameIndex << std::endl;
 		cv::waitKey(1);

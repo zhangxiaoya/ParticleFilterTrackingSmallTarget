@@ -2,7 +2,7 @@
 #include <core/core.hpp>
 #include "State.h"
 
-#define BIN 8   // 直方图条数
+#define BIN (8 * 256)   // 直方图条数
 #define SHIFT 5 //log2( 256/8 )为移动位数
 
 #define SIGMA2 0.02
