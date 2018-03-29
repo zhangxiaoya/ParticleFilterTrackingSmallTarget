@@ -1,22 +1,22 @@
 #include "Tracker.h"
 #include "State.h"
 #include <ctime>
-#include <core/core.hpp>
+#include <opencv2/core/core.hpp>
 
 int Tracker::ParticleTracking(unsigned short* image, int width, int height, int& centerX, int& centerY, int& halfWidthOfTarget, int& halfHeightOfTarget, float& max_weight)
 {
 	SpaceState estimateState;
 
-	// ÖØ²ÉÑù
+	// ï¿½Ø²ï¿½ï¿½ï¿½
 	ReSelect(_particles, _particleWeights, _nParticle);
 
-	// ´«²¥£º²ÉÑù×´Ì¬·½³Ì£¬¶Ô×´Ì¬±äÁ¿½øÐÐÔ¤²â
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½Ì£ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½
 	Propagate(_particles, _nParticle);
 
-	// ¹Û²â£º¶Ô×´Ì¬Á¿½øÐÐ¸üÐÂ
+	// ï¿½Û²â£ºï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½Ð¸ï¿½ï¿½ï¿½
 	Observe(_particles, _particleWeights, _nParticle, image, width, height);
 
-	// ¹À¼Æ£º¶Ô×´Ì¬Á¿½øÐÐ¹À¼Æ£¬ÌáÈ¡Î»ÖÃÁ¿
+	// ï¿½ï¿½ï¿½Æ£ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½Ð¹ï¿½ï¿½Æ£ï¿½ï¿½ï¿½È¡Î»ï¿½ï¿½ï¿½ï¿½
 	Estimation(_particles, _particleWeights, _nParticle, estimateState);
 
 	centerX = estimateState.centerX;
@@ -24,45 +24,45 @@ int Tracker::ParticleTracking(unsigned short* image, int width, int height, int&
 	halfWidthOfTarget = estimateState._halfWidthOfTarget;
 	halfHeightOfTarget = estimateState._halfHeightOfTarget;
 
-	// Ä£ÐÍ¸üÐÂ
+	// Ä£ï¿½Í¸ï¿½ï¿½ï¿½
 	ModelUpdate(estimateState, _modelHist, _nbin, _piThreshold, image, width, height);
 
-	// ¼ÆËã×î´óÈ¨ÖØÖµ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¨ï¿½ï¿½Öµ
 	max_weight = _particleWeights[0];
 	for (auto i = 1; i < _nParticle; i++)
 		max_weight = max_weight < _particleWeights[i] ? _particleWeights[i] : max_weight;
-	// ½øÐÐºÏ·¨ÐÔ¼ìÑé£¬²»ºÏ·¨·µ»Ø-1
+	// ï¿½ï¿½ï¿½ÐºÏ·ï¿½ï¿½Ô¼ï¿½ï¿½é£¬ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½-1
 	if (centerX < 0 || centerY < 0 || centerX >= width || centerY >= height || halfWidthOfTarget <= 0 || halfHeightOfTarget <= 0)
 		return -1;
 	return 1;
 }
 
 /*
-³õÊ¼»¯ÏµÍ³
-int targetCenterX, targetCenterY£º         ³õÊ¼¸ø¶¨µÄÍ¼ÏñÄ¿±êÇøÓò×ø±ê
-int halfWidthOfTarget, halfHeightOfTarget£ºÄ¿±êµÄ°ë¿í¸ß
-unsigned char * img£º                      Í¼ÏñÊý¾Ý£¬»Ò¶ÈÐÎÊ½
-int width, height£º                        Í¼Ïñ¿í¸ß
+ï¿½ï¿½Ê¼ï¿½ï¿½ÏµÍ³
+int targetCenterX, targetCenterYï¿½ï¿½         ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+int halfWidthOfTarget, halfHeightOfTargetï¿½ï¿½Ä¿ï¿½ï¿½Ä°ï¿½ï¿½ï¿½
+unsigned char * imgï¿½ï¿½                      Í¼ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Ò¶ï¿½ï¿½ï¿½Ê½
+int width, heightï¿½ï¿½                        Í¼ï¿½ï¿½ï¿½ï¿½
 */
 int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTarget, int halfHeightOfTarget, unsigned short* imgData, int width, int height)
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
 
-	// ÉêÇë×´Ì¬Êý×éµÄ¿Õ¼ä
+	// ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½Ä¿Õ¼ï¿½
 	_particles = new SpaceState[_nParticle];
-	// ÉêÇëÁ£×ÓÈ¨ÖØÊý×éµÄ¿Õ¼ä
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿Õ¼ï¿½
 	_particleWeights = new float[_nParticle];
-	// È·¶¨Ö±·½Í¼ÌõÊý
+	// È·ï¿½ï¿½Ö±ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½
 	_nbin = BIN;
-	// ÉêÇëÖ±·½Í¼ÄÚ´æ
+	// ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½Í¼ï¿½Ú´ï¿½
 	_modelHist = new float[_nbin];
 	if (_modelHist == nullptr)
 		return (-1);
 
-	// ¼ÆËãÄ¿±êÄ£°åÖ±·½Í¼
+	// ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½Ä£ï¿½ï¿½Ö±ï¿½ï¿½Í¼
 	CalcuModelHistogram(targetCenterX, targetCenterY, halfWidthOfTarget, halfHeightOfTarget, imgData, width, height, _modelHist);
 
-	// ³õÊ¼»¯Á£×Ó×´Ì¬(ÒÔ(x0,y0,1,1,Wx,Hy,0.1)ÎªÖÐÐÄ³ÊN(0,0.4)ÕýÌ¬·Ö²¼)
+	// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬(ï¿½ï¿½(x0,y0,1,1,Wx,Hy,0.1)Îªï¿½ï¿½ï¿½Ä³ï¿½N(0,0.4)ï¿½ï¿½Ì¬ï¿½Ö²ï¿½)
 	_particles[0].centerX = targetCenterX;
 	_particles[0].centerY = targetCenterY;
 	_particles[0].v_xt = static_cast<float>(0.0); // 1.0
@@ -75,7 +75,7 @@ int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTar
 	float randomNumbers[7];
 	for (auto i = 1; i < _nParticle; i++)
 	{
-		// ²úÉú7¸öËæ»ú¸ßË¹·Ö²¼µÄÊý
+		// ï¿½ï¿½ï¿½ï¿½7ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë¹ï¿½Ö²ï¿½ï¿½ï¿½ï¿½ï¿½
 		for (auto j = 0; j < 7; j++)
 			randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
 
@@ -87,7 +87,7 @@ int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTar
 		_particles[i]._halfHeightOfTarget = static_cast<int>(_particles[0]._halfHeightOfTarget + randomNumbers[5] * _SCALE_DISTURB);
 		_particles[i].at_dot = static_cast<float>(_particles[0].at_dot + randomNumbers[6] * _SCALE_CHANGE_D);
 
-		// È¨ÖØÍ³Ò»Îª1/N£¬ÈÃÃ¿¸öÁ£×ÓÓÐÏàµÈµÄ»ú»á
+		// È¨ï¿½ï¿½Í³Ò»Îª1/Nï¿½ï¿½ï¿½ï¿½Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÈµÄ»ï¿½ï¿½ï¿½
 		_particleWeights[i] = static_cast<float>(1.0 / _nParticle);
 	}
 	return 1;
@@ -95,13 +95,13 @@ int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTar
 
 void Tracker::ReSelect(SpaceState* state, float* weight, int nParticle)
 {
-	// ´æ´¢ÐÂµÄÁ£×Ó
+	// ï¿½æ´¢ï¿½Âµï¿½ï¿½ï¿½ï¿½ï¿½
 	SpaceState* newParticles = new SpaceState[nParticle];
 
-	// Í³¼ÆµÄËæ»úÊýËùÔÙÇø¼äµÄË÷Òý
+	// Í³ï¿½Æµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	int* resampleIndex = new int[nParticle];
 
-	// ¸ù¾ÝÈ¨ÖØÖØÐÂ²ÉÑù
+	// ï¿½ï¿½ï¿½ï¿½È¨ï¿½ï¿½ï¿½ï¿½ï¿½Â²ï¿½ï¿½ï¿½
 	ImportanceSampling(weight, resampleIndex, nParticle);
 
 	for (auto i = 0; i < nParticle; i++)
@@ -115,27 +115,27 @@ void Tracker::ReSelect(SpaceState* state, float* weight, int nParticle)
 }
 
 /**
- * \brief ÖØÐÂ½øÐÐÖØÒªÐÔ²ÉÑù
- * \param wights ¶ÔÓ¦Ñù±¾È¨ÖØÊý×épi(n)
- * \param ResampleIndex ÖØ²ÉÑùË÷ÒýÊý×é(Êä³ö)
- * \param NParticle È¨ÖØÊý×é¡¢ÖØ²ÉÑùË÷ÒýÊý×éÔªËØ¸öÊý
+ * \brief ï¿½ï¿½ï¿½Â½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½Ô²ï¿½ï¿½ï¿½
+ * \param wights ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½È¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½pi(n)
+ * \param ResampleIndex ï¿½Ø²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½)
+ * \param NParticle È¨ï¿½ï¿½ï¿½ï¿½ï¿½é¡¢ï¿½Ø²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôªï¿½Ø¸ï¿½ï¿½ï¿½
  */
 void Tracker::ImportanceSampling(float* wights, int* ResampleIndex, int NParticle)
 {
-	// ÉêÇëÀÛ¼ÆÈ¨ÖØÊý×éÄÚ´æ£¬´óÐ¡ÎªN+1
+	// ï¿½ï¿½ï¿½ï¿½ï¿½Û¼ï¿½È¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú´æ£¬ï¿½ï¿½Ð¡ÎªN+1
 	auto cumulateWeight = new float[NParticle + 1];
-	// ¼ÆËãÀÛ¼ÆÈ¨ÖØ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½Û¼ï¿½È¨ï¿½ï¿½
 	NormalizeCumulatedWeight(wights, cumulateWeight, NParticle);
 	for (auto i = 0; i < NParticle; i++)
 	{
-		// Ëæ»ú²úÉúÒ»¸ö[0,1]¼ä¾ùÔÈ·Ö²¼µÄÊý
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½[0,1]ï¿½ï¿½ï¿½ï¿½È·Ö²ï¿½ï¿½ï¿½ï¿½ï¿½
 		auto randomNumber = rand01();
-		// ËÑË÷<=randomNumberµÄ×îÐ¡Ë÷Òýj
+		// ï¿½ï¿½ï¿½ï¿½<=randomNumberï¿½ï¿½ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½j
 		auto j = BinearySearch(randomNumber, cumulateWeight, NParticle + 1);
 
 		if (j == NParticle)
 			j--;
-		// ·ÅÈëÖØ²ÉÑùË÷ÒýÊý×é
+		// ï¿½ï¿½ï¿½ï¿½ï¿½Ø²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		ResampleIndex[i] = j;
 	}
 
@@ -143,12 +143,12 @@ void Tracker::ImportanceSampling(float* wights, int* ResampleIndex, int NParticl
 }
 
 /*
-¼ÆËã¹éÒ»»¯ÀÛ¼Æ¸ÅÂÊc'_i
-ÊäÈë²ÎÊý£º
-float * weight£º    ÎªÒ»¸öÓÐN¸öÈ¨ÖØ£¨¸ÅÂÊ£©µÄÊý×é
-int N£º             Êý×éÔªËØ¸öÊý
-Êä³ö²ÎÊý£º
-float * cumulateWeight£º ÎªÒ»¸öÓÐN+1¸öÀÛ¼ÆÈ¨ÖØµÄÊý×é£¬
+ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Û¼Æ¸ï¿½ï¿½ï¿½c'_i
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+float * weightï¿½ï¿½    ÎªÒ»ï¿½ï¿½ï¿½ï¿½Nï¿½ï¿½È¨ï¿½Ø£ï¿½ï¿½ï¿½ï¿½Ê£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+int Nï¿½ï¿½             ï¿½ï¿½ï¿½ï¿½Ôªï¿½Ø¸ï¿½ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+float * cumulateWeightï¿½ï¿½ ÎªÒ»ï¿½ï¿½ï¿½ï¿½N+1ï¿½ï¿½ï¿½Û¼ï¿½È¨ï¿½Øµï¿½ï¿½ï¿½ï¿½é£¬
 cumulateWeight[0] = 0;
 */
 void Tracker::NormalizeCumulatedWeight(float* weight, float* cumulateWeight, int N)
@@ -162,8 +162,8 @@ void Tracker::NormalizeCumulatedWeight(float* weight, float* cumulateWeight, int
 }
 
 /**
- * \brief »ñµÃÒ»¸ö[0,1]Ö®¼äµÄËæ»úÊý
- * \return ·µ»ØÒ»¸ö0µ½1Ö®¼äµÄËæ»úÊý
+ * \brief ï¿½ï¿½ï¿½Ò»ï¿½ï¿½[0,1]Ö®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * \return ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½0ï¿½ï¿½1Ö®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
  */
 float Tracker::rand01()
 {
@@ -171,22 +171,22 @@ float Tracker::rand01()
 }
 
 /**
- * \brief ²úÉúÒ»¸ö¸ßË¹·Ö²¼µÄËæ»úÊý
- * \param u ¸ßË¹·Ö²¼µÄ¾ùÖµ
- * \param sigma ¸ßË¹·Ö²¼µÄ±ê×¼²î
- * \return ¸ßË¹·Ö²¼µÄËæ»úÊý
+ * \brief ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ë¹ï¿½Ö²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * \param u ï¿½ï¿½Ë¹ï¿½Ö²ï¿½ï¿½Ä¾ï¿½Öµ
+ * \param sigma ï¿½ï¿½Ë¹ï¿½Ö²ï¿½ï¿½Ä±ï¿½×¼ï¿½ï¿½
+ * \return ï¿½ï¿½Ë¹ï¿½Ö²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
  */
 float Tracker::randGaussian(float u, float sigma) const
 {
 	float v1;
 	float s = 100.0;
 	/*
-	Ê¹ÓÃÉ¸Ñ¡·¨²úÉúÕýÌ¬·Ö²¼N(0,1)µÄËæ»úÊý(Box-Mulles·½·¨)
-	1. ²úÉú[0,1]ÉÏ¾ùÔÈËæ»ú±äÁ¿X1,X2
-	2. ¼ÆËãV1=2*X1-1,V2=2*X2-1,s=V1^2+V2^2
-	3. Èôs<=1,×ªÏò²½Öè4£¬·ñÔò×ª1
-	4. ¼ÆËãA=(-2ln(s)/s)^(1/2),y1=V1*A, y2=V2*A
-	y1,y2ÎªN(0,1)Ëæ»ú±äÁ¿
+	Ê¹ï¿½ï¿½É¸Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¬ï¿½Ö²ï¿½N(0,1)ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(Box-Mullesï¿½ï¿½ï¿½ï¿½)
+	1. ï¿½ï¿½ï¿½ï¿½[0,1]ï¿½Ï¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½X1,X2
+	2. ï¿½ï¿½ï¿½ï¿½V1=2*X1-1,V2=2*X2-1,s=V1^2+V2^2
+	3. ï¿½ï¿½s<=1,×ªï¿½ï¿½ï¿½ï¿½4ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×ª1
+	4. ï¿½ï¿½ï¿½ï¿½A=(-2ln(s)/s)^(1/2),y1=V1*A, y2=V2*A
+	y1,y2ÎªN(0,1)ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	*/
 	while (s > 1.0)
 	{
@@ -198,9 +198,9 @@ float Tracker::randGaussian(float u, float sigma) const
 	}
 	auto y = static_cast<float>(sqrt(-2.0 * log(s) / s) * v1);
 	/*
-	¸ù¾Ý¹«Ê½
+	ï¿½ï¿½ï¿½Ý¹ï¿½Ê½
 	z = sigma * y + u
-	½«y±äÁ¿×ª»»³ÉN(u,sigma)·Ö²¼
+	ï¿½ï¿½yï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½N(u,sigma)ï¿½Ö²ï¿½
 	*/
 	return(sigma * y + u);
 }
@@ -223,16 +223,16 @@ int Tracker::BinearySearch(float v, float* NCumuWeight, int N)
 }
 
 /*
-¼ÆËãÒ»·ùÍ¼ÏñÖÐÄ³¸öÇøÓòµÄ²ÊÉ«Ö±·½Í¼·Ö²¼
-ÊäÈë²ÎÊý£º
-int targetCenterX, targetCenterY£º          Ö¸¶¨Í¼ÏñÇøÓòµÄÖÐÐÄµã
-int halfWidthOfTarget, halfHeightOfTarget£º Ö¸¶¨Í¼ÏñÇøÓòµÄ°ë¿íºÍ°ë¸ß
-unsigned char * imgData £º                  Í¼ÏñÊý¾Ý£¬°´´Ó×óÖÁÓÒ£¬´ÓÉÏÖÁÏÂµÄË³ÐòÉ¨Ãè£¬
-int width, height£º                         Í¼ÏñµÄ¿íºÍ¸ß
-Êä³ö²ÎÊý£º
-float * ColorHist£º                         ²ÊÉ«Ö±·½Í¼£¬ÑÕÉ«Ë÷Òý°´£º
-i = r * G_BIN * B_BIN + g * B_BIN + bÅÅÁÐ
-int bins£º                                  ²ÊÉ«Ö±·½Í¼µÄÌõÊýR_BIN*G_BIN*B_BIN£¨ÕâÀïÈ¡8x8x8=512£©
+ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½Ä³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä²ï¿½É«Ö±ï¿½ï¿½Í¼ï¿½Ö²ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+int targetCenterX, targetCenterYï¿½ï¿½          Ö¸ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Äµï¿½
+int halfWidthOfTarget, halfHeightOfTargetï¿½ï¿½ Ö¸ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä°ï¿½ï¿½Í°ï¿½ï¿½
+unsigned char * imgData ï¿½ï¿½                  Í¼ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½Ë³ï¿½ï¿½É¨ï¿½è£¬
+int width, heightï¿½ï¿½                         Í¼ï¿½ï¿½Ä¿ï¿½Í¸ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+float * ColorHistï¿½ï¿½                         ï¿½ï¿½É«Ö±ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+i = r * G_BIN * B_BIN + g * B_BIN + bï¿½ï¿½ï¿½ï¿½
+int binsï¿½ï¿½                                  ï¿½ï¿½É«Ö±ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½R_BIN*G_BIN*B_BINï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡8x8x8=512ï¿½ï¿½
 */
 void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
                                   int halfWidthOfTarget, int halfHeightOfTarget,
@@ -240,15 +240,15 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
                                   int width, int height,
                                   float* hist)
 {
-	// Ö±·½Í¼¸÷¸öÖµ¸³0
+	// Ö±ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½0
 	for (auto i = 0; i < _nbin; i++)
 		hist[i] = 0.0;
 
-	// ¿¼ÂÇÌØÊâÇé¿ö£ºcenterX, centerYÔÚÍ¼ÏñÍâÃæ£¬»òÕß£¬halfWidthOfTarget<=0, halfHeightOfTarget<=0,´ËÊ±Ç¿ÖÆÁî²ÊÉ«Ö±·½Í¼Îª0
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½centerX, centerYï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½æ£¬ï¿½ï¿½ï¿½ß£ï¿½halfWidthOfTarget<=0, halfHeightOfTarget<=0,ï¿½ï¿½Ê±Ç¿ï¿½ï¿½ï¿½ï¿½ï¿½É«Ö±ï¿½ï¿½Í¼Îª0
 	if ((targetCenterX < 0) || (targetCenterX >= width) || (targetCenterY < 0) || (targetCenterY >= height) || (halfWidthOfTarget <= 0) || (halfHeightOfTarget <= 0))
 		return;
 
-	// ¼ÆËãÊµ¼Ê¸ß¿íºÍÇøÓòÆðÊ¼µã, ³¬³ö·¶Î§µÄ»°¾ÍÓÃ»­µÄ¿òµÄ±ß½çÀ´¸³ÖµÁ£×ÓµÄÇøÓò
+	// ï¿½ï¿½ï¿½ï¿½Êµï¿½Ê¸ß¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î§ï¿½Ä»ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½Ä¿ï¿½Ä±ß½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½ï¿½
 	auto xBeg = targetCenterX - halfWidthOfTarget;
 	auto yBeg = targetCenterY - halfHeightOfTarget;
 	if (xBeg < 0) xBeg = 0;
@@ -259,10 +259,10 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
 	if (xEnd >= width) xEnd = width - 1;
 	if (yEnd >= height) yEnd = height - 1;
 
-	// ¼ÆËã°ë¾¶Æ½·½a^2
+	// ï¿½ï¿½ï¿½ï¿½ë¾¶Æ½ï¿½ï¿½a^2
 	auto squareOfRadius = halfWidthOfTarget*halfWidthOfTarget + halfHeightOfTarget*halfHeightOfTarget;
 
-	// ¹éÒ»»¯ÏµÊý
+	// ï¿½ï¿½Ò»ï¿½ï¿½Ïµï¿½ï¿½
 	float f = 0.0;
 
 	for (auto y = yBeg; y <= yEnd; y++)
@@ -270,39 +270,39 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
 		for (auto x = xBeg; x <= xEnd; x++)
 		{
 			auto v = imgData[y * width + x] >> SHIFT;
-			//°Ñµ±Ç°rgb»»³ÉÒ»¸öË÷Òý
+			//ï¿½Ñµï¿½Ç°rgbï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			auto index = v;
 
 			auto squareOfRadiusFromCurPixelToCenter = ((y - targetCenterY) * (y - targetCenterY) + (x - targetCenterX) * (x - targetCenterX));
-			// ¼ÆËãµ±Ç°ÏñËØµ½ÖÐÐÄµãµÄ°ë¾¶Æ½·½r^2
+			// ï¿½ï¿½ï¿½ãµ±Ç°ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Äµï¿½Ä°ë¾¶Æ½ï¿½ï¿½r^2
 			auto r2 = static_cast<float>(squareOfRadiusFromCurPixelToCenter * 1.0 / squareOfRadius);
-			// k(r) = 1-r^2, |r| < 1; ÆäËûÖµ k(r) = 0 £¬Ó°ÏìÁ¦
+			// k(r) = 1-r^2, |r| < 1; ï¿½ï¿½ï¿½ï¿½Öµ k(r) = 0 ï¿½ï¿½Ó°ï¿½ï¿½ï¿½ï¿½
 			auto k = 1 - r2;
 			f = f + k;
 
-			// ¼ÆËãºËÃÜ¶È¼ÓÈ¨»Ò¶ÈÖ±·½Í¼
+			// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¶È¼ï¿½È¨ï¿½Ò¶ï¿½Ö±ï¿½ï¿½Í¼
 			hist[index] = hist[index] + k;
 		}
 	}
 
-	// ¹éÒ»»¯Ö±·½Í¼
+	// ï¿½ï¿½Ò»ï¿½ï¿½Ö±ï¿½ï¿½Í¼
 	for (auto i = 0; i < _nbin; i++)
 		hist[i] = hist[i] / f;
 }
 
 /**
- * \brief ¸ù¾ÝÏµÍ³×´Ì¬·½³ÌÇóÈ¡×´Ì¬Ô¤²âÁ¿, S(t) = A S(t-1) + W(t-1), ÆäÖÐW(t-1)±íÊ¾¸ßË¹ÔëÉù
- * \param state ´ýÇóµÄ×´Ì¬Á¿Êý×é
- * \param NParticle ´ýÇó×´Ì¬¸öÊý
+ * \brief ï¿½ï¿½ï¿½ï¿½ÏµÍ³×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡×´Ì¬Ô¤ï¿½ï¿½ï¿½ï¿½, S(t) = A S(t-1) + W(t-1), ï¿½ï¿½ï¿½ï¿½W(t-1)ï¿½ï¿½Ê¾ï¿½ï¿½Ë¹ï¿½ï¿½ï¿½ï¿½
+ * \param state ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * \param NParticle ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½
  */
 void Tracker::Propagate(SpaceState* state, int NParticle)
 {
 	float randomNumbers[7];
 
-	// ¶ÔÃ¿Ò»¸ö×´Ì¬ÏòÁ¿state[i](¹²N¸ö)½øÐÐ¸üÐÂ; ¼ÓÈë¾ùÖµÎª0µÄËæ»ú¸ßË¹ÔëÉù
+	// ï¿½ï¿½Ã¿Ò»ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½state[i](ï¿½ï¿½Nï¿½ï¿½)ï¿½ï¿½ï¿½Ð¸ï¿½ï¿½ï¿½; ï¿½ï¿½ï¿½ï¿½ï¿½ÖµÎª0ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë¹ï¿½ï¿½ï¿½ï¿½
 	for (auto i = 0; i < NParticle; i++)
 	{
-		// ²úÉú7¸öËæ»ú¸ßË¹·Ö²¼µÄÊý
+		// ï¿½ï¿½ï¿½ï¿½7ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë¹ï¿½Ö²ï¿½ï¿½ï¿½ï¿½ï¿½
 		for (auto j = 0; j < 7; j++)
 			randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
 
@@ -320,18 +320,18 @@ void Tracker::Propagate(SpaceState* state, int NParticle)
 
 
 /*
-¹Û²â£¬¸ù¾Ý×´Ì¬¼¯ºÏStÖÐµÄÃ¿Ò»¸ö²ÉÑù£¬¹Û²âÖ±·½Í¼£¬È»ºó
-¸üÐÂ¹À¼ÆÁ¿£¬»ñµÃÐÂµÄÈ¨ÖØ¸ÅÂÊ
-ÊäÈë²ÎÊý£º
-SPACESTATE * state£º      ×´Ì¬Á¿Êý×é
-int N£º                   ×´Ì¬Á¿Êý×éÎ¬Êý
-unsigned char * image£º   Í¼ÏñÊý¾Ý£¬°´´Ó×óÖÁÓÒ£¬´ÓÉÏÖÁÏÂµÄË³ÐòÉ¨Ãè£¬
-ÑÕÉ«ÅÅÁÐ´ÎÐò£ºRGB, RGB, ...
-int width, height£º                Í¼ÏñµÄ¿íºÍ¸ß
-float * ObjectHist£º      Ä¿±êÖ±·½Í¼
-int hbins£º               Ä¿±êÖ±·½Í¼ÌõÊý
-Êä³ö²ÎÊý£º
-float * weight£º          ¸üÐÂºóµÄÈ¨ÖØ
+ï¿½Û²â£¬ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½Stï¿½Ðµï¿½Ã¿Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Û²ï¿½Ö±ï¿½ï¿½Í¼ï¿½ï¿½È»ï¿½ï¿½
+ï¿½ï¿½ï¿½Â¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½È¨ï¿½Ø¸ï¿½ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+SPACESTATE * stateï¿½ï¿½      ×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+int Nï¿½ï¿½                   ×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬ï¿½ï¿½
+unsigned char * imageï¿½ï¿½   Í¼ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½Ë³ï¿½ï¿½É¨ï¿½è£¬
+ï¿½ï¿½É«ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½RGB, RGB, ...
+int width, heightï¿½ï¿½                Í¼ï¿½ï¿½Ä¿ï¿½Í¸ï¿½
+float * ObjectHistï¿½ï¿½      Ä¿ï¿½ï¿½Ö±ï¿½ï¿½Í¼
+int hbinsï¿½ï¿½               Ä¿ï¿½ï¿½Ö±ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+float * weightï¿½ï¿½          ï¿½ï¿½ï¿½Âºï¿½ï¿½È¨ï¿½ï¿½
 */
 void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned short* imgData, int W, int H)
 {
@@ -339,11 +339,11 @@ void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned 
 
 	for (auto i = 0; i < NParticle; i++)
 	{
-		// (1) ¼ÆËã²ÊÉ«Ö±·½Í¼·Ö²¼
+		// (1) ï¿½ï¿½ï¿½ï¿½ï¿½É«Ö±ï¿½ï¿½Í¼ï¿½Ö²ï¿½
 		CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget, state[i]._halfHeightOfTarget, imgData, W, H, hist);
-		// (2) BhattacharyyaÏµÊý
+		// (2) BhattacharyyaÏµï¿½ï¿½
 		float rho = CalcuBhattacharyya(hist, _modelHist);
-		// (3) ¸ù¾Ý¼ÆËãµÃµÄBhattacharyyaÏµÊý¼ÆËã¸÷¸öÈ¨ÖØÖµ
+		// (3) ï¿½ï¿½ï¿½Ý¼ï¿½ï¿½ï¿½Ãµï¿½BhattacharyyaÏµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¨ï¿½ï¿½Öµ
 		weight[i] = CalcuWeightedPi(rho);
 	}
 
@@ -351,10 +351,10 @@ void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned 
 }
 
 /**
- * \brief ¼ÆËãBhattachryyaÏµÊý
- * \param histA Ö±·½Í¼A
- * \param histB Ö±·½Í¼B
- * \return BhattacharyyaÏµÊý
+ * \brief ï¿½ï¿½ï¿½ï¿½BhattachryyaÏµï¿½ï¿½
+ * \param histA Ö±ï¿½ï¿½Í¼A
+ * \param histB Ö±ï¿½ï¿½Í¼B
+ * \return BhattacharyyaÏµï¿½ï¿½
  */
 float Tracker::CalcuBhattacharyya(float* histA, float* histB) const
 {
@@ -372,13 +372,13 @@ float Tracker::CalcuWeightedPi(float rho) const
 }
 
 /*
-¹À¼Æ£¬¸ù¾ÝÈ¨ÖØ£¬¹À¼ÆÒ»¸ö×´Ì¬Á¿×÷Îª¸ú×ÙÊä³ö
-ÊäÈë²ÎÊý£º
-SPACESTATE * state£º      ×´Ì¬Á¿Êý×é
-float * weight£º          ¶ÔÓ¦È¨ÖØ
-int N£º                   ×´Ì¬Á¿Êý×éÎ¬Êý
-Êä³ö²ÎÊý£º
-SPACESTATE * EstState£º   ¹À¼Æ³öµÄ×´Ì¬Á¿
+ï¿½ï¿½ï¿½Æ£ï¿½ï¿½ï¿½ï¿½ï¿½È¨ï¿½Ø£ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+SPACESTATE * stateï¿½ï¿½      ×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+float * weightï¿½ï¿½          ï¿½ï¿½Ó¦È¨ï¿½ï¿½
+int Nï¿½ï¿½                   ×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+SPACESTATE * EstStateï¿½ï¿½   ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½
 */
 void Tracker::Estimation(SpaceState* particles, float* weights, int NParticle, SpaceState& EstState)
 {
@@ -390,7 +390,7 @@ void Tracker::Estimation(SpaceState* particles, float* weights, int NParticle, S
 	float centerX = 0;
 	float centerY = 0;
 	float weight_sum = 0;
-	for (auto i = 0; i < NParticle; i++) /* ÇóºÍ */
+	for (auto i = 0; i < NParticle; i++) /* ï¿½ï¿½ï¿½ */
 	{
 		at_dot += particles[i].at_dot * weights[i];
 		halfWidthOfTarget += particles[i]._halfWidthOfTarget * weights[i];
@@ -402,9 +402,9 @@ void Tracker::Estimation(SpaceState* particles, float* weights, int NParticle, S
 		weight_sum += weights[i];
 	}
 
-	// ÇóÆ½¾ù
+	// ï¿½ï¿½Æ½ï¿½ï¿½
 	if (weight_sum <= 0)
-		weight_sum = 1; // ·ÀÖ¹±»0³ý£¬Ò»°ã²»»á·¢Éú
+		weight_sum = 1; // ï¿½ï¿½Ö¹ï¿½ï¿½0ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ã²»ï¿½á·¢ï¿½ï¿½
 
 	EstState.at_dot = at_dot / weight_sum;
 	EstState._halfWidthOfTarget = static_cast<int>(halfWidthOfTarget / weight_sum);
@@ -416,26 +416,26 @@ void Tracker::Estimation(SpaceState* particles, float* weights, int NParticle, S
 }
 
 /************************************************************
-Ä£ÐÍ¸üÐÂ
-ÊäÈë²ÎÊý£º
-SPACESTATE EstState£º   ×´Ì¬Á¿µÄ¹À¼ÆÖµ
-float * TargetHist£º    Ä¿±êÖ±·½Í¼
-int bins£º              Ö±·½Í¼ÌõÊý
-float PiT£º             ãÐÖµ£¨È¨ÖØãÐÖµ£©
-unsigned char * img£º   Í¼ÏñÊý¾Ý£¬RGBÐÎÊ½
-int width, height£º     Í¼Ïñ¿í¸ß
-Êä³ö£º
-float * TargetHist£º    ¸üÐÂµÄÄ¿±êÖ±·½Í¼
+Ä£ï¿½Í¸ï¿½ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+SPACESTATE EstStateï¿½ï¿½   ×´Ì¬ï¿½ï¿½ï¿½Ä¹ï¿½ï¿½ï¿½Öµ
+float * TargetHistï¿½ï¿½    Ä¿ï¿½ï¿½Ö±ï¿½ï¿½Í¼
+int binsï¿½ï¿½              Ö±ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½
+float PiTï¿½ï¿½             ï¿½ï¿½Öµï¿½ï¿½È¨ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½
+unsigned char * imgï¿½ï¿½   Í¼ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½RGBï¿½ï¿½Ê½
+int width, heightï¿½ï¿½     Í¼ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½
+float * TargetHistï¿½ï¿½    ï¿½ï¿½ï¿½Âµï¿½Ä¿ï¿½ï¿½Ö±ï¿½ï¿½Í¼
 ************************************************************/
 void Tracker::ModelUpdate(SpaceState EstState, float* TargetHist, int bins, float PiT, unsigned short* imgData, int width, int height)
 {
 	auto estimatedHist = new float[bins];
 
-	// (1)ÔÚ¹À¼ÆÖµ´¦¼ÆËãÄ¿±êÖ±·½Í¼
+	// (1)ï¿½Ú¹ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½Ö±ï¿½ï¿½Í¼
 	CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imgData, width, height, estimatedHist);
-	// (2)¼ÆËãBhattacharyyaÏµÊý
+	// (2)ï¿½ï¿½ï¿½ï¿½BhattacharyyaÏµï¿½ï¿½
 	float Bha = CalcuBhattacharyya(estimatedHist, TargetHist);
-	// (3)¼ÆËã¸ÅÂÊÈ¨ÖØ
+	// (3)ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¨ï¿½ï¿½
 	float Pi_E = CalcuWeightedPi(Bha);
 
 	if (Pi_E > PiT)

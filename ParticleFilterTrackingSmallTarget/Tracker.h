@@ -1,12 +1,12 @@
 #pragma once
-#include <core/core.hpp>
+#include <opencv2/core/core.hpp>
 #include "State.h"
 
-#define BIN 8   // Ö±·½Í¼ÌõÊı
-#define SHIFT 5 //log2( 256/8 )ÎªÒÆ¶¯Î»Êı
+#define BIN 8   // ç›´æ–¹å›¾æ¡æ•°
+#define SHIFT 5 //log2( 256/8 )ä¸ºç§»åŠ¨ä½æ•°
 
 #define SIGMA2 0.02
-#define ALPHA_COEFFICIENT 0.2 // Ä¿±êÄ£ĞÍ¸üĞÂÈ¨ÖØ
+#define ALPHA_COEFFICIENT 0.2 // ç›®æ ‡æ¨¡å‹æ›´æ–°æƒé‡
 
 class Tracker
 {
@@ -65,19 +65,19 @@ private:
 
 	unsigned short* _curFrame;
 
-	SpaceState* _particles; // ×´Ì¬Êı×é
+	SpaceState* _particles; // çŠ¶æ€æ•°ç»„
 
 	cv::Mat _curFrameMat;
 	cv::Mat _trackingImg;
 
-	float _DELTA_T;          // Ö¡Æµ£¬¿ÉÒÔÎª30£¬25£¬15£¬10µÈ
-	float _VELOCITY_DISTURB; // ËÙ¶ÈÈÅ¶¯·ùÖµ
-	float _SCALE_DISTURB;    // ´°¿í¸ßÈÅ¶¯·ù¶È
-	float _SCALE_CHANGE_D;   // ³ß¶È±ä»»ËÙ¶ÈÈÅ¶¯·ù¶È
+	float _DELTA_T;          // å¸§é¢‘ï¼Œå¯ä»¥ä¸º30ï¼Œ25ï¼Œ15ï¼Œ10ç­‰
+	float _VELOCITY_DISTURB; // é€Ÿåº¦æ‰°åŠ¨å¹…å€¼
+	float _SCALE_DISTURB;    // çª—å®½é«˜æ‰°åŠ¨å¹…åº¦
+	float _SCALE_CHANGE_D;   // å°ºåº¦å˜æ¢é€Ÿåº¦æ‰°åŠ¨å¹…åº¦
 
-	int _nParticle;    // Á£×Ó¸öÊı
-	float* _modelHist; // Ä£ĞÍÖ±·½Í¼
-	float* _particleWeights; // Ã¿¸öÁ£×ÓµÄÈ¨ÖØ
-	int _nbin;          // Ö±·½Í¼ÌõÊı
-	float _piThreshold; // È¨ÖØãĞÖµ
+	int _nParticle;    // ç²’å­ä¸ªæ•°
+	float* _modelHist; // æ¨¡å‹ç›´æ–¹å›¾
+	float* _particleWeights; // æ¯ä¸ªç²’å­çš„æƒé‡
+	int _nbin;          // Ö±ç›´æ–¹å›¾æ¡æ•°
+	float _piThreshold; // æƒé‡é˜ˆå€¼
 };

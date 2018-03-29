@@ -1,7 +1,6 @@
 #include <iostream>
-#include <highgui/highgui.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
-#include "Tracker.h"
 #include "BinaryFileStream.h"
 #include <iomanip>
 
@@ -26,7 +25,7 @@ int main()
 	for(auto fileIdx = 0; fileIdx < 42; ++ fileIdx)
 	{
 
-		sprintf_s(fileFullNameArr, fileFullNameFormat.c_str(), fileIdx);
+		sprintf(fileFullNameArr, fileFullNameFormat.c_str(), fileIdx);
 
 		fileReader.ResetFileStream(string(fileFullNameArr));
 
@@ -58,6 +57,5 @@ int main()
 
 	cv::destroyAllWindows();
 
-	system("pause");
 	return 0;
 }
