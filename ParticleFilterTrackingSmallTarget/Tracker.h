@@ -2,7 +2,7 @@
 #include <opencv2/core/core.hpp>
 #include "State.h"
 
-#define BIN 8   // 直方图条数
+#define BIN (8 * 256)   // 直方图条数
 #define SHIFT 5 //log2( 256/8 )为移动位数
 
 #define SIGMA2 0.02
@@ -12,19 +12,19 @@ class Tracker
 {
 public:
 	explicit Tracker(unsigned char width, unsigned char height)
-		: _width(width),
-		  _height(height),
-		  _curFrame(nullptr),
-		  _particles(nullptr),
-		  _DELTA_T(0.05),
-		  _VELOCITY_DISTURB(40.0),
-		  _SCALE_DISTURB(0.0),
-		  _SCALE_CHANGE_D(0.001),
-		  _nParticle(100),
-		  _modelHist(nullptr),
-		  _particleWeights(nullptr),
-		  _nbin(0),
-		  _piThreshold(0.9)
+			: _width(width),
+			  _height(height),
+			  _curFrame(nullptr),
+			  _particles(nullptr),
+			  _DELTA_T(0.05),
+			  _VELOCITY_DISTURB(40.0),
+			  _SCALE_DISTURB(0.0),
+			  _SCALE_CHANGE_D(0.001),
+			  _nParticle(100),
+			  _modelHist(nullptr),
+			  _particleWeights(nullptr),
+			  _nbin(0),
+			  _piThreshold(0.9)
 	{
 	}
 
@@ -78,6 +78,6 @@ private:
 	int _nParticle;    // 粒子个数
 	float* _modelHist; // 模型直方图
 	float* _particleWeights; // 每个粒子的权重
-	int _nbin;          // ֱ直方图条数
+	int _nbin;          // 直方图条数
 	float _piThreshold; // 权重阈值
 };
