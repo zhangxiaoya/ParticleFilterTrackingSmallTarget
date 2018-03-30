@@ -36,11 +36,11 @@ public:
     void SetParticleCount(unsigned int particleCount);
 
 private:
-	void ReSelect(SpaceState* state, float* weight, int nParticle);
+	void ReSelect(SpaceState *state, float *weight);
 
-	static void ImportanceSampling(float* wights, int* ResampleIndex, int nParticle);
+	void ImportanceSampling(float *wights, int *ResampleIndex);
 
-	static void NormalizeCumulatedWeight(float* weight, float* cumulateWeight, int nParticle);
+	void NormalizeCumulatedWeight(float *weight, float *cumulateWeight);
 
 	static float rand01();
 
@@ -50,17 +50,17 @@ private:
 
 	void CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation);
 
-	void Propagate(SpaceState* state, int nParticle);
+	void Propagate(SpaceState *state);
 
-	void Observe(SpaceState *state, float *weight, int NParticle, unsigned short *imageData);
+	void Observe(SpaceState *state, float *weight, unsigned short *imageData);
 
 	float CalcuBhattacharyya(float* histA, float* histB) const;
 
 	float CalcuWeightedPi(float rho) const;
 
-	void Estimation(SpaceState* particles, float* weights, int NParticle, SpaceState& EstState);
+	void Estimation(SpaceState *particles, float *weights, SpaceState &EstState);
 
-	void ModelUpdate(SpaceState EstState, float *TargetHist, int bins, float PiT, unsigned short *imageData);
+	void ModelUpdate(SpaceState EstState, float *TargetHist, float PiT, unsigned short *imageData);
 
 private:
 	unsigned short _width; // Frame size : width
@@ -70,8 +70,7 @@ private:
 
 	SpaceState* _particles; // 状态数组
 
-	cv::Mat _curFrameMat;
-	cv::Mat _trackingImg;
+    cv::Mat _trackingImg;
 
 	float _DELTA_T;          // 帧频，可以为30，25，15，10等
 	float _VELOCITY_DISTURB; // 速度扰动幅值
