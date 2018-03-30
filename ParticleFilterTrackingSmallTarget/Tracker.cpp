@@ -1,5 +1,7 @@
 #include "Tracker.h"
-
+/*
+ * 粒子滤波跟踪算法
+ */
 int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight)
 {
 	SpaceState estimateState;
@@ -470,4 +472,18 @@ void Tracker::ModelUpdate(SpaceState EstState, float *TargetHist, float PiT, uns
 void Tracker::SetParticleCount(const unsigned int particleCount)
 {
 	this->_nParticle = particleCount;
+}
+
+Tracker::~Tracker()
+{
+    if (this->_particles)
+    {
+        delete[] this->_particles;
+        this->_particles = nullptr;
+    }
+    if (this->_particleWeights)
+    {
+        delete[] this->_particleWeights;
+        this->_particleWeights = nullptr;
+    }
 }
