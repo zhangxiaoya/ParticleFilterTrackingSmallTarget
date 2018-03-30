@@ -53,7 +53,7 @@ private:
 
 	void Propagate(SpaceState* state, int nParticle);
 
-	void Observe(SpaceState* state, float* weight, int NParticle, unsigned short* imgData, int width, int height);
+	void Observe(SpaceState *state, float *weight, int NParticle, unsigned short *imageData);
 
 	float CalcuBhattacharyya(float* histA, float* histB) const;
 
