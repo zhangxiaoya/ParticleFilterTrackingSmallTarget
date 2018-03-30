@@ -11,7 +11,7 @@ int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOr
 	Propagate(_particles, _nParticle);
 
 	// 观测：对状态量进行更新
-	Observe(_particles, _particleWeights, _nParticle, imageData, this->_width, this->_height);
+    Observe(_particles, _particleWeights, _nParticle, imageData);
 
 	// 估计：对状态量进行估计，提取位置量
 	Estimation(_particles, _particleWeights, _nParticle, estimateState);
@@ -330,23 +330,20 @@ void Tracker::Propagate(SpaceState* state, int NParticle)
 输入参数：
 SPACESTATE * state：      状态量数组
 int N：                   状态量数组维数
-unsigned char * image：   图像数据，按从左至右，从上至下的顺序扫描，
-颜色排列次序：RGB, RGB, ...
-int width, height：                图像的宽和高
+unsigned char * image：   图像数据，按从左至右，从上至下的顺序扫描
 float * ObjectHist：      目标直方图
 int hbins：               目标直方图条数
 输出参数：
 float * weight：          更新后的权重
 */
-void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned short* imgData, int W, int H)
+void Tracker::Observe(SpaceState *state, float *weight, int NParticle, unsigned short *imageData)
 {
 	float * hist = new float[_nBin];
 
 	for (auto i = 0; i < NParticle; i++)
 	{
 		// (1) 计算彩色直方图分布
-        CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget,
-                            state[i]._halfHeightOfTarget, imgData, hist);
+        CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget, state[i]._halfHeightOfTarget, imageData, hist);
 		// (2) Bhattacharyya系数
 		float rho = CalcuBhattacharyya(hist, _modelHist);
 		// (3) 根据计算得的Bhattacharyya系数计算各个权重值
