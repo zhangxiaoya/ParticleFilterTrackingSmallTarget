@@ -1,7 +1,4 @@
 #include "Tracker.h"
-#include "State.h"
-#include <ctime>
-#include <opencv2/core/core.hpp>
 
 int Tracker::ParticleTracking(unsigned short* image, int width, int height, int& centerX, int& centerY, int& halfWidthOfTarget, int& halfHeightOfTarget, float& max_weight)
 {
@@ -25,7 +22,7 @@ int Tracker::ParticleTracking(unsigned short* image, int width, int height, int&
 	halfHeightOfTarget = estimateState._halfHeightOfTarget;
 
 	// 模型更新
-	ModelUpdate(estimateState, _modelHist, _nbin, _piThreshold, image, width, height);
+	ModelUpdate(estimateState, _modelHist, _nBin, _piThreshold, image, width, height);
 
 	// 计算最大权重值
 	max_weight = _particleWeights[0];
@@ -44,7 +41,13 @@ int halfWidthOfTarget, halfHeightOfTarget：目标的半宽高
 unsigned char * img：                      图像数据，灰度形式
 int width, height：                        图像宽高
 */
-int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTarget, int halfHeightOfTarget, unsigned short* imgData, int width, int height)
+int Tracker::Initialize(int targetCenterX,
+						int targetCenterY,
+						int halfWidthOfTarget,
+						int halfHeightOfTarget,
+						unsigned short* imgData,
+						int width,
+						int height)
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
 
@@ -53,14 +56,21 @@ int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTar
 	// 申请粒子权重数组的空间
 	_particleWeights = new float[_nParticle];
 	// 确定直方图条数
-	_nbin = BIN;
-	// 申请直方图内存
-	_modelHist = new float[_nbin];
+	_nBin = BIN;
+	// 申请存放模板的内存
+	_modelHist = new float[_nBin];
 	if (_modelHist == nullptr)
 		return (-1);
 
 	// 计算目标模板直方图
-	CalcuModelHistogram(targetCenterX, targetCenterY, halfWidthOfTarget, halfHeightOfTarget, imgData, width, height, _modelHist);
+	CalcuModelHistogram(targetCenterX,
+						targetCenterY,
+						halfWidthOfTarget,
+						halfHeightOfTarget,
+						imgData,
+						width,
+						height,
+						_modelHist);
 
 	// 初始化粒子状态(以(x0,y0,1,1,Wx,Hy,0.1)为中心呈N(0,0.4)正态分布)
 	_particles[0].centerX = targetCenterX;
@@ -241,7 +251,7 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
 								  float* hist)
 {
 	// 直方图各个值赋0
-	for (auto i = 0; i < _nbin; i++)
+	for (auto i = 0; i < _nBin; i++)
 		hist[i] = 0.0;
 
 	// 考虑特殊情况：centerX, centerY在图像外面，或者，halfWidthOfTarget<=0, halfHeightOfTarget<=0,此时强制令彩色直方图为0
@@ -286,7 +296,7 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
 	}
 
 	// 归一化直方图
-	for (auto i = 0; i < _nbin; i++)
+	for (auto i = 0; i < _nBin; i++)
 		hist[i] = hist[i] / f;
 }
 
@@ -335,7 +345,7 @@ float * weight：          更新后的权重
 */
 void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned short* imgData, int W, int H)
 {
-	float * hist = new float[_nbin];
+	float * hist = new float[_nBin];
 
 	for (auto i = 0; i < NParticle; i++)
 	{
@@ -359,7 +369,7 @@ void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned 
 float Tracker::CalcuBhattacharyya(float* histA, float* histB) const
 {
 	float rho = 0.0;
-	for (auto i = 0; i < _nbin; i++)
+	for (auto i = 0; i < _nBin; i++)
 		rho = static_cast<float>(rho + sqrt(histA[i] * histB[i]));
 	return rho;
 }
@@ -446,4 +456,13 @@ void Tracker::ModelUpdate(SpaceState EstState, float* TargetHist, int bins, floa
 		}
 	}
 	delete[] estimatedHist;
+}
+
+/*********************************************************
+ * * 功能： 初始化设置粒子的数量
+ * * 参数： 粒子数量
+ ********************************************************/
+void Tracker::SetParticleCount(unsigned int particleCount)
+{
+	this->_nParticle = particleCount;
 }
