@@ -19,8 +19,8 @@ void GetShowFrames(const Mat &frame, Mat &showFrame);
 int main()
 {
     // 定义图像宽和高
-    int width = FrameWidth;
-    int height = FrameHeight;
+    unsigned int width = FrameWidth;
+    unsigned int height = FrameHeight;
 
     // 文件名格式定义
     string fileFullNameFormat = "/home/ynzhang/Desktop/Data/trackingData/Segment_%02d.dat";
@@ -92,7 +92,7 @@ int main()
         {
             int trackingStatus = 1;
             GetShowFrames(frame, showFrame);
-            if(isFirstFrame)
+            if(true == isFirstFrame)
             {
                 tracker.Initialize(previousOrientation, imgDataPointer);
 

@@ -29,9 +29,9 @@ public:
 	{
 	}
 
-	int ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &max_weight);
+	int ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight);
 
-	int Initialize(const Orientation &initialOrientation, unsigned short *imgData);
+	int Initialize(const Orientation &initialOrientation, unsigned short *imageData);
 
     void SetParticleCount(unsigned int particleCount);
 
@@ -48,8 +48,7 @@ private:
 
 	static int BinearySearch(float value, float* NCumuWeight, int N);
 
-	void CalcuModelHistogram(int centerX, int centerY, int halfWidthOfTarget, int halfHeightofTarget,
-                                 unsigned short *imgData, float *hist);
+	void CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation);
 
 	void Propagate(SpaceState* state, int nParticle);
 
