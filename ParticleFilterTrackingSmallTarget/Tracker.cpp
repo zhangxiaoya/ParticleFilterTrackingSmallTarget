@@ -63,14 +63,8 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 		return (-1);
 
 	// 计算目标模板直方图
-	CalcuModelHistogram(initialOrientation._centerX,
-						initialOrientation._centerY,
-						initialOrientation._halfWidthOfTarget,
-						initialOrientation._halfHeightOfTarget,
-						imgData,
-						this->_width,
-						this->_height,
-						_modelHist);
+    CalcuModelHistogram(initialOrientation._centerX, initialOrientation._centerY, initialOrientation._halfWidthOfTarget,
+                        initialOrientation._halfHeightOfTarget, imgData, _modelHist);
 
 	// 初始化粒子状态(以(x0,y0,1,1,Wx,Hy,0.1)为中心呈N(0,0.4)正态分布)
 	_particles[0].centerX = initialOrientation._centerX;
@@ -238,25 +232,26 @@ int Tracker::BinearySearch(float v, float* NCumuWeight, int N)
 int targetCenterX, targetCenterY：          指定图像区域的中心点
 int halfWidthOfTarget, halfHeightOfTarget： 指定图像区域的半宽和半高
 unsigned char * imgData ：                  图像数据，按从左至右，从上至下的顺序扫描，
-int width, height：                         图像的宽和高
 输出参数：
 float * ColorHist：                         彩色直方图，颜色索引按：
 i = r * G_BIN * B_BIN + g * B_BIN + b排列
 int bins：                                  彩色直方图的条数R_BIN*G_BIN*B_BIN（这里取8x8x8=512）
 */
-void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
-								  int halfWidthOfTarget, int halfHeightOfTarget,
-								  unsigned short* imgData,
-								  int width, int height,
-								  float* hist)
+void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY, int halfWidthOfTarget, int halfHeightOfTarget,
+                                  unsigned short *imgData, float *hist)
 {
 	// 直方图各个值赋0
 	for (auto i = 0; i < _nBin; i++)
 		hist[i] = 0.0;
 
-	// 考虑特殊情况：centerX, centerY在图像外面，或者，halfWidthOfTarget<=0, halfHeightOfTarget<=0,此时强制令彩色直方图为0
-	if ((targetCenterX < 0) || (targetCenterX >= width) || (targetCenterY < 0) || (targetCenterY >= height) || (halfWidthOfTarget <= 0) || (halfHeightOfTarget <= 0))
-		return;
+	// 考虑特殊情况：centerX, centerY在图像外面，或者，halfWidthOfTarget<=0, halfHeightOfTarget<=0,此时强制直方图为0
+    if ((targetCenterX < 0)
+        || (targetCenterY < 0)
+        || (targetCenterX >= this->_width)
+        || (targetCenterY >= this->_height)
+        || (halfWidthOfTarget <= 0)
+        || (halfHeightOfTarget <= 0))
+        return;
 
 	// 计算实际高宽和区域起始点, 超出范围的话就用画的框的边界来赋值粒子的区域
 	auto xBeg = targetCenterX - halfWidthOfTarget;
@@ -266,8 +261,8 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
 
 	auto xEnd = targetCenterX + halfWidthOfTarget;
 	auto yEnd = targetCenterY + halfHeightOfTarget;
-	if (xEnd >= width) xEnd = width - 1;
-	if (yEnd >= height) yEnd = height - 1;
+	if (xEnd >= this->_width ) xEnd = this->_width - 1;
+	if (yEnd >= this->_height) yEnd = this->_height - 1;
 
 	// 计算半径平方a^2
 	auto squareOfRadius = halfWidthOfTarget*halfWidthOfTarget + halfHeightOfTarget*halfHeightOfTarget;
@@ -279,7 +274,7 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
 	{
 		for (auto x = xBeg; x <= xEnd; x++)
 		{
-			auto v = imgData[y * width + x] >> SHIFT;
+			auto v = imgData[y * this->_width + x] >> SHIFT;
 			//把当前rgb换成一个索引
 			auto index = v;
 
@@ -350,7 +345,8 @@ void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned 
 	for (auto i = 0; i < NParticle; i++)
 	{
 		// (1) 计算彩色直方图分布
-		CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget, state[i]._halfHeightOfTarget, imgData, W, H, hist);
+        CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget,
+                            state[i]._halfHeightOfTarget, imgData, hist);
 		// (2) Bhattacharyya系数
 		float rho = CalcuBhattacharyya(hist, _modelHist);
 		// (3) 根据计算得的Bhattacharyya系数计算各个权重值
@@ -442,7 +438,8 @@ void Tracker::ModelUpdate(SpaceState EstState, float* TargetHist, int bins, floa
 	auto estimatedHist = new float[bins];
 
 	// (1)在估计值处计算目标直方图
-	CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imgData, width, height, estimatedHist);
+    CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget,
+                        imgData, estimatedHist);
 	// (2)计算Bhattacharyya系数
 	float Bha = CalcuBhattacharyya(estimatedHist, TargetHist);
 	// (3)计算概率权重

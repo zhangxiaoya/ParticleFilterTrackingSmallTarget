@@ -48,7 +48,8 @@ private:
 
 	static int BinearySearch(float value, float* NCumuWeight, int N);
 
-	void CalcuModelHistogram(int centerX, int centerY, int halfWidthOfTarget, int halfHeightofTarget, unsigned short* imgData, int width, int height, float* hist);
+	void CalcuModelHistogram(int centerX, int centerY, int halfWidthOfTarget, int halfHeightofTarget,
+                                 unsigned short *imgData, float *hist);
 
 	void Propagate(SpaceState* state, int nParticle);
 
