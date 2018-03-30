@@ -1,4 +1,6 @@
 #include "Tracker.h"
+#include "Utils.h"
+
 /*
  * 粒子滤波跟踪算法
  */
@@ -50,22 +52,12 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
 
-	// 申请状态数组的空间
-	_particles = new SpaceState[_nParticle];
-	// 申请粒子权重数组的空间
-	_particleWeights = new float[_nParticle];
-	// 确定直方图条数
-	_nBin = BIN;
-
-	// 申请存放模板的内存
-	_modelHist = new float[_nBin];
-	if (nullptr == _modelHist)
-    {
-        return (-1);
-    }
+    // 初始化空间
+    if(false == InitSpace())
+        return -1;
 
 	// 计算目标模板直方图
-    CalcuModelHistogram(imageData, _modelHist, initialOrientation);
+    CalcuModelHistogram(imageData, this->_modelHist, initialOrientation);
 
 	// 初始化粒子状态(以(x0,y0,1,1,Wx,Hy,0.1)为中心呈N(0,0.4)正态分布)
     _particles[0]._orientation = initialOrientation;
@@ -78,21 +70,47 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 	for (auto i = 1; i < _nParticle; i++)
 	{
 		// 产生7个随机高斯分布的数
-		for (auto j = 0; j < 7; j++)
-			randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
+        Utils::RandomGaussian(randomNumbers, 7);
 
-		_particles[i]._orientation._centerX = static_cast<int>(_particles[0]._orientation._centerX + randomNumbers[0] * initialOrientation._halfWidthOfTarget);
-		_particles[i]._orientation._centerY = static_cast<int>(_particles[0]._orientation._centerY + randomNumbers[1] * initialOrientation._halfHeightOfTarget);
-		_particles[i].v_xt = _particles[0].v_xt + randomNumbers[2] * _VELOCITY_DISTURB;
-		_particles[i].v_yt = _particles[0].v_yt + randomNumbers[3] * _VELOCITY_DISTURB;
-		_particles[i]._orientation._halfWidthOfTarget = static_cast<int>(_particles[0]._orientation._halfWidthOfTarget + randomNumbers[4] * _SCALE_DISTURB);
-		_particles[i]._orientation._halfHeightOfTarget = static_cast<int>(_particles[0]._orientation._halfHeightOfTarget + randomNumbers[5] * _SCALE_DISTURB);
-		_particles[i].at_dot = _particles[0].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
+        _particles[i]._orientation._centerX = static_cast<int>(_particles[0]._orientation._centerX + randomNumbers[0] *
+                                                                                                     initialOrientation._halfWidthOfTarget);
+        _particles[i]._orientation._centerY = static_cast<int>(_particles[0]._orientation._centerY + randomNumbers[1] *
+                                                                                                     initialOrientation._halfHeightOfTarget);
+        _particles[i].v_xt = _particles[0].v_xt + randomNumbers[2] * _VELOCITY_DISTURB;
+        _particles[i].v_yt = _particles[0].v_yt + randomNumbers[3] * _VELOCITY_DISTURB;
+        _particles[i]._orientation._halfWidthOfTarget = static_cast<int>(_particles[0]._orientation._halfWidthOfTarget +
+                                                                         randomNumbers[4] * _SCALE_DISTURB);
+        _particles[i]._orientation._halfHeightOfTarget = static_cast<int>(
+                _particles[0]._orientation._halfHeightOfTarget + randomNumbers[5] * _SCALE_DISTURB);
+        _particles[i].at_dot = _particles[0].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
 
 		// 权重统一为1/N，让每个粒子有相等的机会
 		_particleWeights[i] = static_cast<float>(1.0 / _nParticle);
 	}
 	return 1;
+}
+
+/*****************************************
+ * 初始化 空间
+ *****************************************/
+bool Tracker::InitSpace()
+{
+    // 申请状态数组的空间
+    this->_particles = new SpaceState[_nParticle];
+    if(nullptr == this->_particles)
+        return false;
+
+    // 申请粒子权重数组的空间
+    _particleWeights = new float[_nParticle];
+    if(nullptr == this->_particleWeights)
+        return false;
+
+    // 申请存放模板的内存
+    this->_modelHist = new float[_nBin];
+    if (nullptr == this->_modelHist)
+        return false;
+
+    return true;
 }
 
 void Tracker::ReSelect(SpaceState *state, float *weight)

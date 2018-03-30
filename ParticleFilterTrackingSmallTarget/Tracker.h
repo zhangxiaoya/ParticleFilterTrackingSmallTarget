@@ -24,7 +24,7 @@ public:
 			  _nParticle(100),
 			  _modelHist(nullptr),
 			  _particleWeights(nullptr),
-			  _nBin(0),
+			  _nBin(BIN),
 			  _piThreshold(0.9)
 	{
 	}
@@ -84,4 +84,5 @@ private:
 	float* _modelHist;  // 模型直方图
 	float* _particleWeights; // 每个粒子的权重
 	float _piThreshold;      // 权重阈值
+    bool InitSpace();
 };
