@@ -1,6 +1,6 @@
 #include "Tracker.h"
 
-int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &max_weight)
+int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight)
 {
 	SpaceState estimateState;
 
@@ -22,9 +22,9 @@ int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOr
     ModelUpdate(estimateState, _modelHist, _nBin, _piThreshold, imageData);
 
 	// 计算最大权重值
-	max_weight = _particleWeights[0];
+	maxWeight = _particleWeights[0];
 	for (auto i = 1; i < _nParticle; i++)
-		max_weight = max_weight < _particleWeights[i] ? _particleWeights[i] : max_weight;
+		maxWeight = maxWeight < _particleWeights[i] ? _particleWeights[i] : maxWeight;
 
 	// 进行合法性检验，不合法返回-1
 	if (trackingOrientation._centerX < 0
@@ -44,7 +44,7 @@ int halfWidthOfTarget, halfHeightOfTarget：目标的半宽高
 unsigned char * img：                      图像数据，灰度形式
 int width, height：                        图像宽高
 */
-int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *imgData)
+int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *imageData)
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
 
@@ -54,22 +54,21 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 	_particleWeights = new float[_nParticle];
 	// 确定直方图条数
 	_nBin = BIN;
+
 	// 申请存放模板的内存
 	_modelHist = new float[_nBin];
-	if (_modelHist == nullptr)
-		return (-1);
+	if (nullptr == _modelHist)
+    {
+        return (-1);
+    }
 
 	// 计算目标模板直方图
-    CalcuModelHistogram(initialOrientation._centerX, initialOrientation._centerY, initialOrientation._halfWidthOfTarget,
-                        initialOrientation._halfHeightOfTarget, imgData, _modelHist);
+    CalcuModelHistogram(imageData, _modelHist, initialOrientation);
 
 	// 初始化粒子状态(以(x0,y0,1,1,Wx,Hy,0.1)为中心呈N(0,0.4)正态分布)
-	_particles[0]._orientation._centerX = initialOrientation._centerX;
-	_particles[0]._orientation._centerY = initialOrientation._centerY;
+    _particles[0]._orientation = initialOrientation;
 	_particles[0].v_xt = static_cast<float>(0.0); // 1.0
 	_particles[0].v_yt = static_cast<float>(0.0); // 1.0
-	_particles[0]._orientation._halfWidthOfTarget = initialOrientation._halfWidthOfTarget;
-	_particles[0]._orientation._halfHeightOfTarget = initialOrientation._halfHeightOfTarget;
 	_particles[0].at_dot = static_cast<float>(0.0); // 0.1
 	_particleWeights[0] = static_cast<float>(1.0 / _nParticle); // 0.9;
 
@@ -234,35 +233,39 @@ float * ColorHist：                         彩色直方图，颜色索引按�
 i = r * G_BIN * B_BIN + g * B_BIN + b排列
 int bins：                                  彩色直方图的条数R_BIN*G_BIN*B_BIN（这里取8x8x8=512）
 */
-void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY, int halfWidthOfTarget, int halfHeightOfTarget,
-                                  unsigned short *imgData, float *hist)
+void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation)
 {
 	// 直方图各个值赋0
 	for (auto i = 0; i < _nBin; i++)
 		hist[i] = 0.0;
 
 	// 考虑特殊情况：centerX, centerY在图像外面，或者，halfWidthOfTarget<=0, halfHeightOfTarget<=0,此时强制直方图为0
-    if ((targetCenterX < 0)
-        || (targetCenterY < 0)
-        || (targetCenterX >= this->_width)
-        || (targetCenterY >= this->_height)
-        || (halfWidthOfTarget <= 0)
-        || (halfHeightOfTarget <= 0))
+    if ((orientation._centerX < 0)
+        || (orientation._centerY < 0)
+        || (orientation._centerX >= this->_width)
+        || (orientation._centerY >= this->_height)
+        || (orientation._halfWidthOfTarget <= 0)
+        || (orientation._halfHeightOfTarget <= 0))
         return;
 
 	// 计算实际高宽和区域起始点, 超出范围的话就用画的框的边界来赋值粒子的区域
-	auto xBeg = targetCenterX - halfWidthOfTarget;
-	auto yBeg = targetCenterY - halfHeightOfTarget;
-	if (xBeg < 0) xBeg = 0;
-	if (yBeg < 0) yBeg = 0;
+	auto xBeg = orientation._centerX - orientation._halfWidthOfTarget;
+	auto yBeg = orientation._centerY - orientation._halfHeightOfTarget;
+	if (xBeg < 0)
+        xBeg = 0;
+	if (yBeg < 0)
+        yBeg = 0;
 
-	auto xEnd = targetCenterX + halfWidthOfTarget;
-	auto yEnd = targetCenterY + halfHeightOfTarget;
-	if (xEnd >= this->_width ) xEnd = this->_width - 1;
-	if (yEnd >= this->_height) yEnd = this->_height - 1;
+	auto xEnd = orientation._centerX + orientation._halfWidthOfTarget;
+	auto yEnd = orientation._centerY + orientation._halfHeightOfTarget;
+	if (xEnd >= this->_width )
+        xEnd = this->_width - 1;
+	if (yEnd >= this->_height)
+        yEnd = this->_height - 1;
 
 	// 计算半径平方a^2
-	auto squareOfRadius = halfWidthOfTarget*halfWidthOfTarget + halfHeightOfTarget*halfHeightOfTarget;
+    auto squareOfRadius = orientation._halfWidthOfTarget * orientation._halfWidthOfTarget +
+                          orientation._halfHeightOfTarget * orientation._halfHeightOfTarget;
 
 	// 归一化系数
 	float f = 0.0;
@@ -271,11 +274,13 @@ void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY, int half
 	{
 		for (auto x = xBeg; x <= xEnd; x++)
 		{
-			auto v = imgData[y * this->_width + x] >> SHIFT;
+			auto v = imageData[y * this->_width + x] >> SHIFT;
 			//把当前rgb换成一个索引
 			auto index = v;
 
-			auto squareOfRadiusFromCurPixelToCenter = ((y - targetCenterY) * (y - targetCenterY) + (x - targetCenterX) * (x - targetCenterX));
+            auto squareOfRadiusFromCurPixelToCenter = (
+                    (y - orientation._halfHeightOfTarget) * (y - orientation._halfHeightOfTarget) +
+                    (x - orientation._halfWidthOfTarget) * (x - orientation._halfWidthOfTarget));
 			// 计算当前像素到中心点的半径平方r^2
 			auto r2 = static_cast<float>(squareOfRadiusFromCurPixelToCenter * 1.0 / squareOfRadius);
 			// k(r) = 1-r^2, |r| < 1; 其他值 k(r) = 0 ，影响力
@@ -340,7 +345,7 @@ void Tracker::Observe(SpaceState *state, float *weight, int NParticle, unsigned 
 	for (auto i = 0; i < NParticle; i++)
 	{
 		// (1) 计算彩色直方图分布
-        CalcuModelHistogram(state[i]._orientation._centerX, state[i]._orientation._centerY, state[i]._orientation._halfWidthOfTarget, state[i]._orientation._halfHeightOfTarget, imageData, hist);
+        CalcuModelHistogram(imageData, hist, state[i]._orientation);
 		// (2) Bhattacharyya系数
 		float rho = CalcuBhattacharyya(hist, _modelHist);
 		// (3) 根据计算得的Bhattacharyya系数计算各个权重值
@@ -431,7 +436,7 @@ void Tracker::ModelUpdate(SpaceState EstState, float *TargetHist, int bins, floa
 	auto estimatedHist = new float[bins];
 
 	// (1)在估计值处计算目标直方图
-    CalcuModelHistogram(EstState._orientation._centerX, EstState._orientation._centerY, EstState._orientation._halfWidthOfTarget, EstState._orientation._halfHeightOfTarget, imageData, estimatedHist);
+    CalcuModelHistogram(imageData, estimatedHist, EstState._orientation);
 	// (2)计算Bhattacharyya系数
 	float Bha = CalcuBhattacharyya(estimatedHist, TargetHist);
 	// (3)计算概率权重
