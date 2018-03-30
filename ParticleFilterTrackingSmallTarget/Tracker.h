@@ -23,14 +23,23 @@ public:
 			  _nParticle(100),
 			  _modelHist(nullptr),
 			  _particleWeights(nullptr),
-			  _nbin(0),
+			  _nBin(0),
 			  _piThreshold(0.9)
 	{
 	}
 
-	int ParticleTracking(unsigned short* image, int width, int height, int& centerX, int& centerY, int& halfWidthOfTarget, int& halfHeightOfTarget, float& max_weight);
+	int ParticleTracking(unsigned short* image,
+						 int width,
+						 int height,
+						 int& centerX,
+						 int& centerY,
+						 int& halfWidthOfTarget,
+						 int& halfHeightOfTarget,
+						 float& max_weight);
 
 	int Initialize(int centerX, int centerY, int halfWidthOfTarget, int halfHeightOfTarget, unsigned short* imgData, int width, int height);
+
+    void SetParticleCount(unsigned int particleCount);
 
 private:
 	void ReSelect(SpaceState* state, float* weight, int nParticle);
@@ -75,9 +84,9 @@ private:
 	float _SCALE_DISTURB;    // 窗宽高扰动幅度
 	float _SCALE_CHANGE_D;   // 尺度变换速度扰动幅度
 
-	int _nParticle;    // 粒子个数
-	float* _modelHist; // 模型直方图
+    unsigned int _nParticle;     // 粒子个数
+    unsigned int _nBin;          // 直方图条数
+	float* _modelHist;  // 模型直方图
 	float* _particleWeights; // 每个粒子的权重
-	int _nbin;          // 直方图条数
-	float _piThreshold; // 权重阈值
+	float _piThreshold;      // 权重阈值
 };

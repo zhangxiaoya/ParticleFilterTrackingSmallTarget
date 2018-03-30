@@ -39,6 +39,9 @@ int main()
     cv::Rect rect(304, 259, 4, 4);
     Tracker tracker(width, height);
 
+    // 设置粒子数量
+    tracker.SetParticleCount(100);
+
     // 是否是第一帧的标识
     bool isFirstFrame = true;
     // 粒子最大权重返回值
@@ -75,7 +78,8 @@ int main()
         {
             if(isFirstFrame)
             {
-                tracker.Initialize(centerX, centerY,
+                tracker.Initialize(centerX,
+                                   centerY,
                                    halfWidthOfTarget,
                                    halfHeightOfTarget,
                                    imgDataPointer,
