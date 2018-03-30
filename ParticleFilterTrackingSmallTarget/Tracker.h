@@ -61,7 +61,7 @@ private:
 
 	void Estimation(SpaceState* particles, float* weights, int NParticle, SpaceState& EstState);
 
-	void ModelUpdate(SpaceState EstState, float* TargetHist, int bins, float PiT, unsigned short* imgData, int width, int height);
+	void ModelUpdate(SpaceState EstState, float *TargetHist, int bins, float PiT, unsigned short *imageData);
 
 private:
 	unsigned short _width; // Frame size : width
