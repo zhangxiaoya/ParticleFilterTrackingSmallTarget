@@ -1,6 +1,6 @@
 #include "Tracker.h"
 
-int Tracker::ParticleTracking(unsigned short* image, int width, int height, int& centerX, int& centerY, int& halfWidthOfTarget, int& halfHeightOfTarget, float& max_weight)
+int Tracker::ParticleTracking(unsigned short *image, int width, int height, Orientation &trackingOrientation, float &max_weight)
 {
 	SpaceState estimateState;
 
@@ -16,10 +16,10 @@ int Tracker::ParticleTracking(unsigned short* image, int width, int height, int&
 	// 估计：对状态量进行估计，提取位置量
 	Estimation(_particles, _particleWeights, _nParticle, estimateState);
 
-	centerX = estimateState.centerX;
-	centerY = estimateState.centerY;
-	halfWidthOfTarget = estimateState._halfWidthOfTarget;
-	halfHeightOfTarget = estimateState._halfHeightOfTarget;
+	trackingOrientation._centerX = estimateState.centerX;
+	trackingOrientation._centerY = estimateState.centerY;
+	trackingOrientation._halfWidthOfTarget = estimateState._halfWidthOfTarget;
+	trackingOrientation._halfHeightOfTarget = estimateState._halfHeightOfTarget;
 
 	// 模型更新
 	ModelUpdate(estimateState, _modelHist, _nBin, _piThreshold, image, width, height);
@@ -28,8 +28,14 @@ int Tracker::ParticleTracking(unsigned short* image, int width, int height, int&
 	max_weight = _particleWeights[0];
 	for (auto i = 1; i < _nParticle; i++)
 		max_weight = max_weight < _particleWeights[i] ? _particleWeights[i] : max_weight;
+
 	// 进行合法性检验，不合法返回-1
-	if (centerX < 0 || centerY < 0 || centerX >= width || centerY >= height || halfWidthOfTarget <= 0 || halfHeightOfTarget <= 0)
+	if (trackingOrientation._centerX < 0
+        || trackingOrientation._centerY < 0
+        || trackingOrientation._centerX >= width
+        || trackingOrientation._centerY >= height
+        || trackingOrientation._halfWidthOfTarget <= 0
+        || trackingOrientation._halfHeightOfTarget <= 0)
 		return -1;
 	return 1;
 }
@@ -41,13 +47,7 @@ int halfWidthOfTarget, halfHeightOfTarget：目标的半宽高
 unsigned char * img：                      图像数据，灰度形式
 int width, height：                        图像宽高
 */
-int Tracker::Initialize(int targetCenterX,
-						int targetCenterY,
-						int halfWidthOfTarget,
-						int halfHeightOfTarget,
-						unsigned short* imgData,
-						int width,
-						int height)
+int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *imgData)
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
 
@@ -63,22 +63,22 @@ int Tracker::Initialize(int targetCenterX,
 		return (-1);
 
 	// 计算目标模板直方图
-	CalcuModelHistogram(targetCenterX,
-						targetCenterY,
-						halfWidthOfTarget,
-						halfHeightOfTarget,
+	CalcuModelHistogram(initialOrientation._centerX,
+						initialOrientation._centerY,
+						initialOrientation._halfWidthOfTarget,
+						initialOrientation._halfHeightOfTarget,
 						imgData,
-						width,
-						height,
+						this->_width,
+						this->_height,
 						_modelHist);
 
 	// 初始化粒子状态(以(x0,y0,1,1,Wx,Hy,0.1)为中心呈N(0,0.4)正态分布)
-	_particles[0].centerX = targetCenterX;
-	_particles[0].centerY = targetCenterY;
+	_particles[0].centerX = initialOrientation._centerX;
+	_particles[0].centerY = initialOrientation._centerY;
 	_particles[0].v_xt = static_cast<float>(0.0); // 1.0
 	_particles[0].v_yt = static_cast<float>(0.0); // 1.0
-	_particles[0]._halfWidthOfTarget = halfWidthOfTarget;
-	_particles[0]._halfHeightOfTarget = halfHeightOfTarget;
+	_particles[0]._halfWidthOfTarget = initialOrientation._halfWidthOfTarget;
+	_particles[0]._halfHeightOfTarget = initialOrientation._halfHeightOfTarget;
 	_particles[0].at_dot = static_cast<float>(0.0); // 0.1
 	_particleWeights[0] = static_cast<float>(1.0 / _nParticle); // 0.9;
 
@@ -89,8 +89,8 @@ int Tracker::Initialize(int targetCenterX,
 		for (auto j = 0; j < 7; j++)
 			randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
 
-		_particles[i].centerX = static_cast<int>(_particles[0].centerX + randomNumbers[0] * halfWidthOfTarget);
-		_particles[i].centerY = static_cast<int>(_particles[0].centerY + randomNumbers[1] * halfHeightOfTarget);
+		_particles[i].centerX = static_cast<int>(_particles[0].centerX + randomNumbers[0] * initialOrientation._halfWidthOfTarget);
+		_particles[i].centerY = static_cast<int>(_particles[0].centerY + randomNumbers[1] * initialOrientation._halfHeightOfTarget);
 		_particles[i].v_xt = static_cast<float>(_particles[0].v_xt + randomNumbers[2] * _VELOCITY_DISTURB);
 		_particles[i].v_yt = static_cast<float>(_particles[0].v_yt + randomNumbers[3] * _VELOCITY_DISTURB);
 		_particles[i]._halfWidthOfTarget = static_cast<int>(_particles[0]._halfWidthOfTarget + randomNumbers[4] * _SCALE_DISTURB);

@@ -1,6 +1,7 @@
 #pragma once
 #include <opencv2/core/core.hpp>
 #include "State.h"
+#include "Orientation.h"
 
 #define BIN (8 * 256)   // 直方图条数
 #define SHIFT 5 //log2( 256/8 )为移动位数
@@ -11,7 +12,7 @@
 class Tracker
 {
 public:
-	explicit Tracker(unsigned char width, unsigned char height)
+	explicit Tracker(unsigned short width, unsigned short height)
 			: _width(width),
 			  _height(height),
 			  _curFrame(nullptr),
@@ -28,16 +29,10 @@ public:
 	{
 	}
 
-	int ParticleTracking(unsigned short* image,
-						 int width,
-						 int height,
-						 int& centerX,
-						 int& centerY,
-						 int& halfWidthOfTarget,
-						 int& halfHeightOfTarget,
-						 float& max_weight);
+	int ParticleTracking(unsigned short *image, int width, int height, Orientation &trackingOrientation,
+                             float &max_weight);
 
-	int Initialize(int centerX, int centerY, int halfWidthOfTarget, int halfHeightOfTarget, unsigned short* imgData, int width, int height);
+	int Initialize(const Orientation &initialOrientation, unsigned short *imgData);
 
     void SetParticleCount(unsigned int particleCount);
 
@@ -69,8 +64,8 @@ private:
 	void ModelUpdate(SpaceState EstState, float* TargetHist, int bins, float PiT, unsigned short* imgData, int width, int height);
 
 private:
-	unsigned char _width; // Frame size : width
-	unsigned char _height; // Frame size : height
+	unsigned short _width; // Frame size : width
+	unsigned short _height; // Frame size : height
 
 	unsigned short* _curFrame;
 
