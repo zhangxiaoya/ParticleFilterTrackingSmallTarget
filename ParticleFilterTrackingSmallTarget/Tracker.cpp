@@ -16,10 +16,7 @@ int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOr
 	// 估计：对状态量进行估计，提取位置量
 	Estimation(_particles, _particleWeights, _nParticle, estimateState);
 
-	trackingOrientation._centerX = estimateState.centerX;
-	trackingOrientation._centerY = estimateState.centerY;
-	trackingOrientation._halfWidthOfTarget = estimateState._halfWidthOfTarget;
-	trackingOrientation._halfHeightOfTarget = estimateState._halfHeightOfTarget;
+    trackingOrientation = estimateState._orientation;
 
 	// 模型更新
     ModelUpdate(estimateState, _modelHist, _nBin, _piThreshold, imageData);
@@ -67,12 +64,12 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
                         initialOrientation._halfHeightOfTarget, imgData, _modelHist);
 
 	// 初始化粒子状态(以(x0,y0,1,1,Wx,Hy,0.1)为中心呈N(0,0.4)正态分布)
-	_particles[0].centerX = initialOrientation._centerX;
-	_particles[0].centerY = initialOrientation._centerY;
+	_particles[0]._orientation._centerX = initialOrientation._centerX;
+	_particles[0]._orientation._centerY = initialOrientation._centerY;
 	_particles[0].v_xt = static_cast<float>(0.0); // 1.0
 	_particles[0].v_yt = static_cast<float>(0.0); // 1.0
-	_particles[0]._halfWidthOfTarget = initialOrientation._halfWidthOfTarget;
-	_particles[0]._halfHeightOfTarget = initialOrientation._halfHeightOfTarget;
+	_particles[0]._orientation._halfWidthOfTarget = initialOrientation._halfWidthOfTarget;
+	_particles[0]._orientation._halfHeightOfTarget = initialOrientation._halfHeightOfTarget;
 	_particles[0].at_dot = static_cast<float>(0.0); // 0.1
 	_particleWeights[0] = static_cast<float>(1.0 / _nParticle); // 0.9;
 
@@ -83,12 +80,12 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 		for (auto j = 0; j < 7; j++)
 			randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
 
-		_particles[i].centerX = static_cast<int>(_particles[0].centerX + randomNumbers[0] * initialOrientation._halfWidthOfTarget);
-		_particles[i].centerY = static_cast<int>(_particles[0].centerY + randomNumbers[1] * initialOrientation._halfHeightOfTarget);
+		_particles[i]._orientation._centerX = static_cast<int>(_particles[0]._orientation._centerX + randomNumbers[0] * initialOrientation._halfWidthOfTarget);
+		_particles[i]._orientation._centerY = static_cast<int>(_particles[0]._orientation._centerY + randomNumbers[1] * initialOrientation._halfHeightOfTarget);
 		_particles[i].v_xt = static_cast<float>(_particles[0].v_xt + randomNumbers[2] * _VELOCITY_DISTURB);
 		_particles[i].v_yt = static_cast<float>(_particles[0].v_yt + randomNumbers[3] * _VELOCITY_DISTURB);
-		_particles[i]._halfWidthOfTarget = static_cast<int>(_particles[0]._halfWidthOfTarget + randomNumbers[4] * _SCALE_DISTURB);
-		_particles[i]._halfHeightOfTarget = static_cast<int>(_particles[0]._halfHeightOfTarget + randomNumbers[5] * _SCALE_DISTURB);
+		_particles[i]._orientation._halfWidthOfTarget = static_cast<int>(_particles[0]._orientation._halfWidthOfTarget + randomNumbers[4] * _SCALE_DISTURB);
+		_particles[i]._orientation._halfHeightOfTarget = static_cast<int>(_particles[0]._orientation._halfHeightOfTarget + randomNumbers[5] * _SCALE_DISTURB);
 		_particles[i].at_dot = static_cast<float>(_particles[0].at_dot + randomNumbers[6] * _SCALE_CHANGE_D);
 
 		// 权重统一为1/N，让每个粒子有相等的机会
@@ -311,15 +308,15 @@ void Tracker::Propagate(SpaceState* state, int NParticle)
 		for (auto j = 0; j < 7; j++)
 			randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
 
-		state[i].centerX = static_cast<int>(state[i].centerX + state[i].v_xt * _DELTA_T + randomNumbers[0] * state[i]._halfWidthOfTarget + 0.5);
-		state[i].centerY = static_cast<int>(state[i].centerY + state[i].v_yt * _DELTA_T + randomNumbers[1] * state[i]._halfHeightOfTarget + 0.5);
+		state[i]._orientation._centerX = static_cast<int>(state[i]._orientation._centerX + state[i].v_xt * _DELTA_T + randomNumbers[0] * state[i]._orientation._halfWidthOfTarget + 0.5);
+		state[i]._orientation._centerY = static_cast<int>(state[i]._orientation._centerY + state[i].v_yt * _DELTA_T + randomNumbers[1] * state[i]._orientation._halfHeightOfTarget + 0.5);
 		state[i].v_xt = static_cast<float>(state[i].v_xt + randomNumbers[2] * _VELOCITY_DISTURB);
 		state[i].v_yt = static_cast<float>(state[i].v_yt + randomNumbers[3] * _VELOCITY_DISTURB);
-		state[i]._halfWidthOfTarget = static_cast<int>(state[i]._halfWidthOfTarget + state[i]._halfWidthOfTarget * state[i].at_dot + randomNumbers[4] * _SCALE_DISTURB + 0.5);
-		state[i]._halfHeightOfTarget = static_cast<int>(state[i]._halfHeightOfTarget + state[i]._halfHeightOfTarget * state[i].at_dot + randomNumbers[5] * _SCALE_DISTURB + 0.5);
+		state[i]._orientation._halfWidthOfTarget = static_cast<int>(state[i]._orientation._halfWidthOfTarget + state[i]._orientation._halfWidthOfTarget * state[i].at_dot + randomNumbers[4] * _SCALE_DISTURB + 0.5);
+		state[i]._orientation._halfHeightOfTarget = static_cast<int>(state[i]._orientation._halfHeightOfTarget + state[i]._orientation._halfHeightOfTarget * state[i].at_dot + randomNumbers[5] * _SCALE_DISTURB + 0.5);
 		state[i].at_dot = static_cast<float>(state[i].at_dot + randomNumbers[6] * _SCALE_CHANGE_D);
 
-		circle(_trackingImg, cv::Point(state[i].centerX, state[i].centerY), 3, cv::Scalar(0, 255, 0), 1, 8, 3);
+		circle(_trackingImg, cv::Point(state[i]._orientation._centerX, state[i]._orientation._centerY), 3, cv::Scalar(0, 255, 0), 1, 8, 3);
 	}
 }
 
@@ -343,7 +340,7 @@ void Tracker::Observe(SpaceState *state, float *weight, int NParticle, unsigned 
 	for (auto i = 0; i < NParticle; i++)
 	{
 		// (1) 计算彩色直方图分布
-        CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget, state[i]._halfHeightOfTarget, imageData, hist);
+        CalcuModelHistogram(state[i]._orientation._centerX, state[i]._orientation._centerY, state[i]._orientation._halfWidthOfTarget, state[i]._orientation._halfHeightOfTarget, imageData, hist);
 		// (2) Bhattacharyya系数
 		float rho = CalcuBhattacharyya(hist, _modelHist);
 		// (3) 根据计算得的Bhattacharyya系数计算各个权重值
@@ -396,12 +393,12 @@ void Tracker::Estimation(SpaceState* particles, float* weights, int NParticle, S
 	for (auto i = 0; i < NParticle; i++) /* 求和 */
 	{
 		at_dot += particles[i].at_dot * weights[i];
-		halfWidthOfTarget += particles[i]._halfWidthOfTarget * weights[i];
-		halfHeightOfTarget += particles[i]._halfHeightOfTarget * weights[i];
+		halfWidthOfTarget += particles[i]._orientation._halfWidthOfTarget * weights[i];
+		halfHeightOfTarget += particles[i]._orientation._halfHeightOfTarget * weights[i];
 		v_xt += particles[i].v_xt * weights[i];
 		v_yt += particles[i].v_yt * weights[i];
-		centerX += particles[i].centerX * weights[i];
-		centerY += particles[i].centerY * weights[i];
+		centerX += particles[i]._orientation._centerX * weights[i];
+		centerY += particles[i]._orientation._centerY * weights[i];
 		weight_sum += weights[i];
 	}
 
@@ -410,12 +407,12 @@ void Tracker::Estimation(SpaceState* particles, float* weights, int NParticle, S
 		weight_sum = 1; // 防止被0除，一般不会发生
 
 	EstState.at_dot = at_dot / weight_sum;
-	EstState._halfWidthOfTarget = static_cast<int>(halfWidthOfTarget / weight_sum);
-	EstState._halfHeightOfTarget = static_cast<int>(halfHeightOfTarget / weight_sum);
+	EstState._orientation._halfWidthOfTarget = static_cast<int>(halfWidthOfTarget / weight_sum);
+	EstState._orientation._halfHeightOfTarget = static_cast<int>(halfHeightOfTarget / weight_sum);
 	EstState.v_xt = v_xt / weight_sum;
 	EstState.v_yt = v_yt / weight_sum;
-	EstState.centerX = static_cast<int>(centerX / weight_sum);
-	EstState.centerY = static_cast<int>(centerY / weight_sum);
+	EstState._orientation._centerX = static_cast<int>(centerX / weight_sum);
+	EstState._orientation._centerY = static_cast<int>(centerY / weight_sum);
 }
 
 /************************************************************
@@ -434,7 +431,7 @@ void Tracker::ModelUpdate(SpaceState EstState, float *TargetHist, int bins, floa
 	auto estimatedHist = new float[bins];
 
 	// (1)在估计值处计算目标直方图
-    CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imageData, estimatedHist);
+    CalcuModelHistogram(EstState._orientation._centerX, EstState._orientation._centerY, EstState._orientation._halfWidthOfTarget, EstState._orientation._halfHeightOfTarget, imageData, estimatedHist);
 	// (2)计算Bhattacharyya系数
 	float Bha = CalcuBhattacharyya(estimatedHist, TargetHist);
 	// (3)计算概率权重
