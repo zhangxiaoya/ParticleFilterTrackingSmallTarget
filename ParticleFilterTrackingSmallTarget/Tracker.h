@@ -29,8 +29,7 @@ public:
 	{
 	}
 
-	int ParticleTracking(unsigned short *image, int width, int height, Orientation &trackingOrientation,
-                             float &max_weight);
+	int ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &max_weight);
 
 	int Initialize(const Orientation &initialOrientation, unsigned short *imgData);
 

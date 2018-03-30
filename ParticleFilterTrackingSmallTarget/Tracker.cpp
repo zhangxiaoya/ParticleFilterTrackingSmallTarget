@@ -1,6 +1,6 @@
 #include "Tracker.h"
 
-int Tracker::ParticleTracking(unsigned short *image, int width, int height, Orientation &trackingOrientation, float &max_weight)
+int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &max_weight)
 {
 	SpaceState estimateState;
 
@@ -11,7 +11,7 @@ int Tracker::ParticleTracking(unsigned short *image, int width, int height, Orie
 	Propagate(_particles, _nParticle);
 
 	// 观测：对状态量进行更新
-	Observe(_particles, _particleWeights, _nParticle, image, width, height);
+	Observe(_particles, _particleWeights, _nParticle, imageData, this->_width, this->_height);
 
 	// 估计：对状态量进行估计，提取位置量
 	Estimation(_particles, _particleWeights, _nParticle, estimateState);
@@ -22,7 +22,7 @@ int Tracker::ParticleTracking(unsigned short *image, int width, int height, Orie
 	trackingOrientation._halfHeightOfTarget = estimateState._halfHeightOfTarget;
 
 	// 模型更新
-	ModelUpdate(estimateState, _modelHist, _nBin, _piThreshold, image, width, height);
+	ModelUpdate(estimateState, _modelHist, _nBin, _piThreshold, imageData, this->_width, this->_height);
 
 	// 计算最大权重值
 	max_weight = _particleWeights[0];
@@ -32,8 +32,8 @@ int Tracker::ParticleTracking(unsigned short *image, int width, int height, Orie
 	// 进行合法性检验，不合法返回-1
 	if (trackingOrientation._centerX < 0
         || trackingOrientation._centerY < 0
-        || trackingOrientation._centerX >= width
-        || trackingOrientation._centerY >= height
+        || trackingOrientation._centerX >= this->_width
+        || trackingOrientation._centerY >= this->_height
         || trackingOrientation._halfWidthOfTarget <= 0
         || trackingOrientation._halfHeightOfTarget <= 0)
 		return -1;

@@ -100,10 +100,10 @@ int main()
             }
             else
             {
-                trackingStatus = tracker.ParticleTracking(imgDataPointer, width, height, currentOrientation, maxWeight);
+                trackingStatus = tracker.ParticleTracking(imgDataPointer, currentOrientation, maxWeight);
+
                 std::cout << "Max weight = " << std::setw(10) << maxWeight << std::endl;
             }
-            frameIndex++;
 
             if(trackingStatus == 1 && maxWeight > 0.3)
             {
@@ -116,6 +116,7 @@ int main()
             {
                 std::cout << "Target Lost" << std::endl;
             }
+            frameIndex++;
 
             imshow("Frame", showFrame);
             cv::waitKey(10);
