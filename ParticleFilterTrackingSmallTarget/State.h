@@ -1,12 +1,12 @@
 #pragma once
 
 struct SpaceState
-{						  /* ×´Ì¬¿Õ¼ä±äÁ¿ */
-	int centerX;               /* x×ø±êÎ»ÖÃ */
-	int centerY;               /* y×ø±êÎ»ÖÃ */
-	float v_xt;           /* x·½ÏòÔË¶¯ËÙ¶È */
-	float v_yt;           /* y·½ÏòÔË¶¯ËÙ¶È */
-	int _halfWidthOfTarget;              /* x·½Ïò°ë´°¿í */
-	int _halfHeightOfTarget;              /* y·½Ïò°ë´°¿í */
-	float at_dot;         /* ³ß¶È±ä»»ËÙ¶È£¬Á£×ÓËù´ú±íµÄÄÇÒ»Æ¬ÇøÓòµÄ³ß¶È±ä»¯ËÙ¶È */
+{						  /* çŠ¶æ€ç©ºé—´å˜é‡ */
+	int centerX;          /* xåæ ‡ä½ç½® */
+	int centerY;          /* yåæ ‡ä½ç½® */
+	float v_xt;           /* xæ–¹å‘è¿åŠ¨é€Ÿåº¦ */
+	float v_yt;           /* yæ–¹å‘è¿åŠ¨é€Ÿåº¦ */
+	int _halfWidthOfTarget;       /* xæ–¹å‘åŠçª—å®½ */
+	int _halfHeightOfTarget;      /* yæ–¹å‘åŠçª—å®½ */
+	float at_dot;         /* å°ºåº¦å˜æ¢é€Ÿåº¦ï¼Œç²’å­æ‰€ä»£è¡¨çš„é‚£ä¸€ç‰‡åŒºåŸŸçš„å°ºåº¦å˜åŒ–é€Ÿåº¦ */
 };

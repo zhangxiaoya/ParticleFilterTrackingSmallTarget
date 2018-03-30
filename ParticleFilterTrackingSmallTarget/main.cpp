@@ -11,6 +11,9 @@
 
 #ifndef FrameHeight
 #define FrameHeight 512
+
+void GetShowFrames(const Mat &frame, Mat &showFrame);
+
 #endif
 
 int main()
@@ -36,7 +39,6 @@ int main()
     Mat showFrame(height, width, CV_8UC1);
 
     // 初始化初始位置
-    cv::Rect rect(304, 259, 4, 4);
     Tracker tracker(width, height);
 
     // 设置粒子数量
@@ -48,17 +50,29 @@ int main()
     float maxWeight = 0;
 
     // 目标初始化位置
-    int centerX = 306;
-    int centerY = 261;
+    int initialCenterX = 306;
+    int initialCenterY = 261;
 
     // 目标初始化宽和高
-    int halfWidthOfTarget = 5;
-    int halfHeightOfTarget = 5;
+    int initialHalfWidthOfTarget = 5;
+    int initialHalfHeightOfTarget = 5;
+
+    // 前一时刻的方位
+    Orientation previousOrientation(initialCenterX,
+                                    initialCenterY,
+                                    initialHalfWidthOfTarget,
+                                    initialHalfHeightOfTarget);
+
+    // 当前时刻跟踪目标的方位
+    Orientation currentOrientation(initialCenterX,
+                                   initialCenterY,
+                                   initialHalfWidthOfTarget,
+                                   initialHalfHeightOfTarget);
 
     // 从哪一个文件开始，目标进入视野
-    int startFileIndex = 9;
+    int startFileIndex = 20;
     // 到哪一个文件结束，目标离开视野
-    int endFileIndex = 10;
+    int endFileIndex = 41;
 
     // 循环遍历所有的图像文件
     for(auto fileIdx = startFileIndex; fileIdx < endFileIndex; ++ fileIdx)
@@ -76,47 +90,26 @@ int main()
         unsigned short* imgDataPointer = nullptr;
         while (fileReader.GetOneFrame(frame, imgDataPointer))
         {
+            int trackingStatus = 1;
+            GetShowFrames(frame, showFrame);
             if(isFirstFrame)
             {
-                tracker.Initialize(centerX,
-                                   centerY,
-                                   halfWidthOfTarget,
-                                   halfHeightOfTarget,
-                                   imgDataPointer,
-                                   width,
-                                   height);
+                tracker.Initialize(previousOrientation, imgDataPointer);
 
                 isFirstFrame = false;
             }
+            else
+            {
+                trackingStatus = tracker.ParticleTracking(imgDataPointer, width, height, currentOrientation, maxWeight);
+                std::cout << "Max weight = " << std::setw(10) << maxWeight << std::endl;
+            }
             frameIndex++;
 
-            auto trackingStatus = tracker.ParticleTracking(imgDataPointer,
-                                                           width, height,
-                                                           centerX, centerY,
-                                                           halfWidthOfTarget,
-                                                           halfHeightOfTarget,
-                                                           maxWeight);
-
-
-            std::cout << "Max weight = " << std::setw(10) << maxWeight << std::endl;
-
-            // 可视化低8位像素信息
-            for (auto r = 0; r < FrameHeight; ++r)
-            {
-                auto ptrOriginal = showFrame.ptr<uchar>(r);
-                auto ptrResult = frame.ptr<unsigned short>(r);
-                for (auto c = 0; c < FrameWidth; ++c)
-                {
-                    auto pixelValue = ptrResult[c];
-                    ptrOriginal[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
-                }
-            }
-
-            if(trackingStatus == 1 || maxWeight > 0.0001)
+            if(trackingStatus == 1 && maxWeight > 0.3)
             {
                 cv::rectangle(showFrame,
-                              cv::Point(centerX - halfWidthOfTarget, centerY - halfHeightOfTarget),
-                              cv::Point(centerX + halfWidthOfTarget, centerY + halfHeightOfTarget),
+                              cv::Point(currentOrientation._centerX - currentOrientation._halfWidthOfTarget, currentOrientation._centerY - currentOrientation._halfHeightOfTarget),
+                              cv::Point(currentOrientation._centerX + currentOrientation._halfWidthOfTarget, currentOrientation._centerY + currentOrientation._halfHeightOfTarget),
                               cv::Scalar(255, 0, 0), 1, 8, 0);
             }
             else
@@ -125,7 +118,7 @@ int main()
             }
 
             imshow("Frame", showFrame);
-            cv::waitKey(100);
+            cv::waitKey(10);
         }
         std::cout << "All frame count is " << frameIndex << std::endl;
         cv::waitKey(1);
@@ -135,4 +128,19 @@ int main()
     cv::destroyAllWindows();
 
     return 0;
+}
+
+// 可视化低8位像素信息
+void GetShowFrames(const Mat &frame, Mat &showFrame)
+{
+    for (auto r = 0; r < FrameHeight; ++r)
+    {
+        auto ptrOriginal = showFrame.ptr<uchar>(r);
+        auto ptrResult = frame.ptr<unsigned short>(r);
+        for (auto c = 0; c < FrameWidth; ++c)
+        {
+            auto pixelValue = ptrResult[c];
+            ptrOriginal[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
+        }
+    }
 }
