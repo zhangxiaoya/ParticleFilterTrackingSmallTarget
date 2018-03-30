@@ -11,16 +11,15 @@
 
 #ifndef FrameHeight
 #define FrameHeight 512
+#endif
 
 void GetShowFrames(const Mat &frame, Mat &showFrame);
-
-#endif
 
 int main()
 {
     // 定义图像宽和高
-    unsigned int width = FrameWidth;
-    unsigned int height = FrameHeight;
+    unsigned short width = FrameWidth;
+    unsigned short height = FrameHeight;
 
     // 文件名格式定义
     string fileFullNameFormat = "/home/ynzhang/Desktop/Data/trackingData/Segment_%02d.dat";
@@ -92,7 +91,7 @@ int main()
         {
             int trackingStatus = 1;
             GetShowFrames(frame, showFrame);
-            if(true == isFirstFrame)
+            if(isFirstFrame)
             {
                 tracker.Initialize(previousOrientation, imgDataPointer);
 
@@ -108,8 +107,10 @@ int main()
             if(trackingStatus == 1 && maxWeight > 0.3)
             {
                 cv::rectangle(showFrame,
-                              cv::Point(currentOrientation._centerX - currentOrientation._halfWidthOfTarget, currentOrientation._centerY - currentOrientation._halfHeightOfTarget),
-                              cv::Point(currentOrientation._centerX + currentOrientation._halfWidthOfTarget, currentOrientation._centerY + currentOrientation._halfHeightOfTarget),
+                              cv::Point(currentOrientation._centerX - currentOrientation._halfWidthOfTarget,
+                                        currentOrientation._centerY - currentOrientation._halfHeightOfTarget),
+                              cv::Point(currentOrientation._centerX + currentOrientation._halfWidthOfTarget,
+                                        currentOrientation._centerY + currentOrientation._halfHeightOfTarget),
                               cv::Scalar(255, 0, 0), 1, 8, 0);
             }
             else
