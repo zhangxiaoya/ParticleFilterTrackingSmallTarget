@@ -22,7 +22,7 @@ int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOr
 	trackingOrientation._halfHeightOfTarget = estimateState._halfHeightOfTarget;
 
 	// 模型更新
-	ModelUpdate(estimateState, _modelHist, _nBin, _piThreshold, imageData, this->_width, this->_height);
+    ModelUpdate(estimateState, _modelHist, _nBin, _piThreshold, imageData);
 
 	// 计算最大权重值
 	max_weight = _particleWeights[0];
@@ -426,17 +426,15 @@ float * TargetHist：    目标直方图
 int bins：              直方图条数
 float PiT：             阈值（权重阈值）
 unsigned char * img：   图像数据，RGB形式
-int width, height：     图像宽高
 输出：
 float * TargetHist：    更新的目标直方图
 ************************************************************/
-void Tracker::ModelUpdate(SpaceState EstState, float* TargetHist, int bins, float PiT, unsigned short* imgData, int width, int height)
+void Tracker::ModelUpdate(SpaceState EstState, float *TargetHist, int bins, float PiT, unsigned short *imageData)
 {
 	auto estimatedHist = new float[bins];
 
 	// (1)在估计值处计算目标直方图
-    CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget,
-                        imgData, estimatedHist);
+    CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imageData, estimatedHist);
 	// (2)计算Bhattacharyya系数
 	float Bha = CalcuBhattacharyya(estimatedHist, TargetHist);
 	// (3)计算概率权重
