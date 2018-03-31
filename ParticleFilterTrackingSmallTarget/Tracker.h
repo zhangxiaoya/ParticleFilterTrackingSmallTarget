@@ -3,8 +3,8 @@
 #include "State.h"
 #include "Orientation.h"
 
-#define BIN (8 * 256)   // 直方图条数
-#define SHIFT 5 //log2( 256/8 )为移动位数
+#define BIN (16 * 256)   // 直方图条数
+#define SHIFT 4 //log2( 256/8 )为移动位数
 
 #define SIGMA2 0.02
 #define ALPHA_COEFFICIENT 0.2 // 目标模型更新权重
@@ -46,8 +46,6 @@ private:
 
 	static float rand01();
 
-	float randGaussian(float u, float sigma) const;
-
 	static int BinearySearch(float value, float* NCumuWeight, int N);
 
 	void CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation);
@@ -63,6 +61,8 @@ private:
 	void Estimation(SpaceState *particles, float *weights, SpaceState &EstState);
 
 	void ModelUpdate(SpaceState EstState, float *TargetHist, float PiT, unsigned short *imageData);
+
+	void GenerateParticles(const Orientation &initialOrientation) const;
 
 private:
 	unsigned short _width; // Frame size : width
