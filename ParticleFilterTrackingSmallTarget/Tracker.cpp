@@ -1,3 +1,4 @@
+#include <iostream>
 #include "Tracker.h"
 #include "Utils.h"
 
@@ -20,10 +21,21 @@ int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOr
 	// 估计：对状态量进行估计，提取位置量
     Estimation(_particles, _particleWeights, estimateState);
 
-    trackingOrientation = estimateState._orientation;
+	if(CheckDist(estimateState._orientation, previousOrientation))
+	{
+		trackingOrientation = estimateState._orientation;
 
-	// 模型更新
-    ModelUpdate(estimateState, _modelHist, _piThreshold, imageData);
+		previousOrientation = estimateState._orientation;
+
+		// 模型更新
+		ModelUpdate(estimateState, _modelHist, _piThreshold, imageData);
+	}
+	else
+	{
+		GenerateParticles(previousOrientation);
+
+		std::cout << "Lost target!" << std::endl;
+	}
 
 	// 计算最大权重值
 	maxWeight = _particleWeights[0];
@@ -52,19 +64,14 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
 
+	previousOrientation = initialOrientation;
+
     // 初始化空间
     if(false == InitSpace())
         return -1;
 
 	// 计算目标模板直方图
     CalcuModelHistogram(imageData, this->_modelHist, initialOrientation);
-
-	// 初始化粒子状态(以(x0,y0,1,1,Wx,Hy,0.1)为中心呈N(0,0.4)正态分布)
-    _particles[0]._orientation = initialOrientation;
-	_particles[0].v_xt = static_cast<float>(0.0); // 1.0
-	_particles[0].v_yt = static_cast<float>(0.0); // 1.0
-	_particles[0].at_dot = static_cast<float>(0.0); // 0.1
-	_particleWeights[0] = static_cast<float>(1.0 / _nParticle); // 0.9;
 
 	GenerateParticles(initialOrientation);
 
@@ -73,6 +80,13 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 
 void Tracker::GenerateParticles(const Orientation &initialOrientation) const
 {
+	// 初始化粒子状态(以(x0,y0,1,1,Wx,Hy,0.1)为中心呈N(0,0.4)正态分布)
+	_particles[0]._orientation = initialOrientation;
+	_particles[0].v_xt = static_cast<float>(0.0); // 1.0
+	_particles[0].v_yt = static_cast<float>(0.0); // 1.0
+	_particles[0].at_dot = static_cast<float>(0.0); // 0.1
+	_particleWeights[0] = static_cast<float>(1.0 / _nParticle); // 0.9;
+
 	float randomNumbers[7];
 	for (auto i = 1; i < _nParticle; i++)
 	{
@@ -219,7 +233,7 @@ int Tracker::BinearySearch(float v, float* NCumuWeight, int N)
 * unsigned char * imgData ：           图像数据，按从左至右，从上至下的顺序扫描
 * const Orientation &orientation       目标的方位
 * 输出参数：
-* float *hist：                        特征直方图：
+* float *hist：                        特征直方图
 **********************************************************************/
 void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation)
 {
@@ -524,4 +538,12 @@ Tracker::~Tracker()
         delete[] this->_particleWeights;
         this->_particleWeights = nullptr;
     }
+}
+
+bool Tracker::CheckDist(Orientation orientation, Orientation previousOrientation)
+{
+	if(abs(orientation._centerX - previousOrientation._centerX) < 5 &&
+			abs(orientation._centerY - previousOrientation._centerY) < 5)
+		return true;
+	return false;
 }
