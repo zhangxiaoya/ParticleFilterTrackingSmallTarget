@@ -24,10 +24,13 @@ int main()
 
     // 文件名格式定义
     string fileFullNameFormat = "/home/ynzhang/Desktop/Data/trackingData/Segment_%02d.dat";
+    string fileFullNameFormatResult = "/home/ynzhang/Desktop/Data/trackingData/results/Segment_%06d.png";
     // 文件名字符串存储
     char fileFullNameArr[200];
+    char fileFullNameArrResult[200];
     // 初始化文件名
     sprintf(fileFullNameArr, fileFullNameFormat.c_str(), 0);
+    sprintf(fileFullNameArrResult, fileFullNameFormatResult.c_str(), 0);
     // 定义一个文件流读取对象
     BinaryFileReader fileReader(width, height);
     // 初始化文件流读取对象
@@ -54,8 +57,8 @@ int main()
     int initialCenterY = 261;
 
     // 目标初始化宽和高
-    int initialHalfWidthOfTarget = 5;
-    int initialHalfHeightOfTarget = 5;
+    int initialHalfWidthOfTarget = 3;
+    int initialHalfHeightOfTarget = 3;
 
     // 前一时刻的方位
     Orientation previousOrientation(initialCenterX,
@@ -70,7 +73,7 @@ int main()
                                    initialHalfHeightOfTarget);
 
     // 从哪一个文件开始，目标进入视野
-    int startFileIndex = 10;
+    int startFileIndex = 9;
     // 到哪一个文件结束，目标离开视野
     int endFileIndex = 11;
 
@@ -104,24 +107,29 @@ int main()
 
                 std::cout << "Max weight = " << std::setw(10) << maxWeight << std::endl;
             }
+            cv::Mat ColorShow;
 
             if(trackingStatus == 1 || maxWeight > 0.3)
             {
-                cv::rectangle(showFrame,
-                              cv::Point(currentOrientation._centerX - currentOrientation._halfWidthOfTarget,
-                                        currentOrientation._centerY - currentOrientation._halfHeightOfTarget),
-                              cv::Point(currentOrientation._centerX + currentOrientation._halfWidthOfTarget,
-                                        currentOrientation._centerY + currentOrientation._halfHeightOfTarget),
-                              cv::Scalar(255, 0, 0), 1, 8, 0);
+                cvtColor(showFrame, ColorShow, CV_GRAY2BGR);
+                cv::rectangle(ColorShow,
+                              cv::Point(currentOrientation._centerX - 2 - currentOrientation._halfWidthOfTarget,
+                                        currentOrientation._centerY - 2 - currentOrientation._halfHeightOfTarget),
+                              cv::Point(currentOrientation._centerX + 2 + currentOrientation._halfWidthOfTarget,
+                                        currentOrientation._centerY + 2 + currentOrientation._halfHeightOfTarget),
+                              cv::Scalar(0, 255, 0));
             }
             else
             {
                 std::cout << "Target Lost" << std::endl;
             }
+            sprintf(fileFullNameArrResult, fileFullNameFormatResult.c_str(), frameIndex);
             frameIndex++;
 
-            imshow("Frame", showFrame);
-            cv::waitKey(0);
+            imshow("Frame", ColorShow);
+            cv::imwrite(fileFullNameArrResult, ColorShow);
+
+            cv::waitKey(100);
         }
         std::cout << "All frame count is " << frameIndex << std::endl;
         cv::waitKey(1);

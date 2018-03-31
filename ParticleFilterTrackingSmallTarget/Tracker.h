@@ -3,7 +3,8 @@
 #include "State.h"
 #include "Orientation.h"
 
-#define BIN (16 * 256)   // 直方图条数
+#define BaseBin (16 * 256)
+#define BIN (BaseBin + 3)  // 直方图条数
 #define SHIFT 4 //log2( 256/8 )为移动位数
 
 #define SIGMA2 0.02
