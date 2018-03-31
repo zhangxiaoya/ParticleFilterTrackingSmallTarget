@@ -351,8 +351,8 @@ void Tracker::Propagate(SpaceState *state)
                                                                      randomNumbers[5] * _SCALE_DISTURB + 0.5);
         state[i].at_dot = state[i].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
 
-        circle(_trackingImg, cv::Point(state[i]._orientation._centerX, state[i]._orientation._centerY), 3,
-               cv::Scalar(0, 255, 0), 1, 8, 3);
+//        circle(_trackingImg, cv::Point(state[i]._orientation._centerX, state[i]._orientation._centerY), 3,
+//               cv::Scalar(0, 255, 0), 1, 8, 3);
     }
 }
 

@@ -1,6 +1,7 @@
 	#include <iostream>
 #include <opencv2/highgui/highgui.hpp>
 #include <iomanip>
+#include <opencv/cv.hpp>
 
 #include "Tracker.h"
 #include "BinaryFileStream.h"
@@ -69,9 +70,9 @@ int main()
                                    initialHalfHeightOfTarget);
 
     // 从哪一个文件开始，目标进入视野
-    int startFileIndex = 20;
+    int startFileIndex = 10;
     // 到哪一个文件结束，目标离开视野
-    int endFileIndex = 41;
+    int endFileIndex = 11;
 
     // 循环遍历所有的图像文件
     for(auto fileIdx = startFileIndex; fileIdx < endFileIndex; ++ fileIdx)
