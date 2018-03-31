@@ -6,9 +6,6 @@
 # png file
 *.png
 
-# txt file
-*.txt
-
 # User-specific files
 *.suo
 *.user
