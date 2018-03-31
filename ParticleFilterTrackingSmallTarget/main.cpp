@@ -105,7 +105,7 @@ int main()
                 std::cout << "Max weight = " << std::setw(10) << maxWeight << std::endl;
             }
 
-            if(trackingStatus == 1 && maxWeight > 0.3)
+            if(trackingStatus == 1 || maxWeight > 0.3)
             {
                 cv::rectangle(showFrame,
                               cv::Point(currentOrientation._centerX - currentOrientation._halfWidthOfTarget,
@@ -121,7 +121,7 @@ int main()
             frameIndex++;
 
             imshow("Frame", showFrame);
-            cv::waitKey(10);
+            cv::waitKey(0);
         }
         std::cout << "All frame count is " << frameIndex << std::endl;
         cv::waitKey(1);

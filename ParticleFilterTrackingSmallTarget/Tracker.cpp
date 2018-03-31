@@ -66,6 +66,13 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 	_particles[0].at_dot = static_cast<float>(0.0); // 0.1
 	_particleWeights[0] = static_cast<float>(1.0 / _nParticle); // 0.9;
 
+	GenerateParticles(initialOrientation);
+
+	return 1;
+}
+
+void Tracker::GenerateParticles(const Orientation &initialOrientation) const
+{
 	float randomNumbers[7];
 	for (auto i = 1; i < _nParticle; i++)
 	{
@@ -73,13 +80,13 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
         Utils::RandomGaussian(randomNumbers, 7);
 
         _particles[i]._orientation._centerX = static_cast<int>(_particles[0]._orientation._centerX + randomNumbers[0] *
-                                                                                                     initialOrientation._halfWidthOfTarget);
+																									 initialOrientation._halfWidthOfTarget);
         _particles[i]._orientation._centerY = static_cast<int>(_particles[0]._orientation._centerY + randomNumbers[1] *
-                                                                                                     initialOrientation._halfHeightOfTarget);
+																									 initialOrientation._halfHeightOfTarget);
         _particles[i].v_xt = _particles[0].v_xt + randomNumbers[2] * _VELOCITY_DISTURB;
         _particles[i].v_yt = _particles[0].v_yt + randomNumbers[3] * _VELOCITY_DISTURB;
         _particles[i]._orientation._halfWidthOfTarget = static_cast<int>(_particles[0]._orientation._halfWidthOfTarget +
-                                                                         randomNumbers[4] * _SCALE_DISTURB);
+																		 randomNumbers[4] * _SCALE_DISTURB);
         _particles[i]._orientation._halfHeightOfTarget = static_cast<int>(
                 _particles[0]._orientation._halfHeightOfTarget + randomNumbers[5] * _SCALE_DISTURB);
         _particles[i].at_dot = _particles[0].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
@@ -87,7 +94,6 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 		// 权重统一为1/N，让每个粒子有相等的机会
 		_particleWeights[i] = static_cast<float>(1.0 / _nParticle);
 	}
-	return 1;
 }
 
 /*****************************************
@@ -190,41 +196,6 @@ float Tracker::rand01()
 	return (rand() / float(RAND_MAX));
 }
 
-/**
- * \brief 产生一个高斯分布的随机数
- * \param u 高斯分布的均值
- * \param sigma 高斯分布的标准差
- * \return 高斯分布的随机数
- */
-float Tracker::randGaussian(float u, float sigma) const
-{
-	float v1;
-	float s = 100.0;
-	/*
-	使用筛选法产生正态分布N(0,1)的随机数(Box-Mulles方法)
-	1. 产生[0,1]上均匀随机变量X1,X2
-	2. 计算V1=2*X1-1,V2=2*X2-1,s=V1^2+V2^2
-	3. 若s<=1,转向步骤4，否则转1
-	4. 计算A=(-2ln(s)/s)^(1/2),y1=V1*A, y2=V2*A
-	y1,y2为N(0,1)随机变量
-	*/
-	while (s > 1.0)
-	{
-		auto x1 = rand01();
-		auto x2 = rand01();
-		v1 = 2 * x1 - 1;
-		auto v2 = 2 * x2 - 1;
-		s = v1*v1 + v2*v2;
-	}
-	auto y = static_cast<float>(sqrt(-2.0 * log(s) / s) * v1);
-	/*
-	根据公式
-	z = sigma * y + u
-	将y变量转换成N(u,sigma)分布
-	*/
-	return(sigma * y + u);
-}
-
 int Tracker::BinearySearch(float v, float* NCumuWeight, int N)
 {
 	auto left = 0;
@@ -320,7 +291,6 @@ void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const 
 /**
  * \brief 根据系统状态方程求取状态预测量, S(t) = A S(t-1) + W(t-1), 其中W(t-1)表示高斯噪声
  * \param state 待求的状态量数组
- * \param NParticle 待求状态个数
  */
 void Tracker::Propagate(SpaceState *state)
 {
@@ -330,8 +300,7 @@ void Tracker::Propagate(SpaceState *state)
     for (auto i = 0; i < this->_nParticle; i++)
     {
         // 产生7个随机高斯分布的数
-        for (auto j = 0; j < 7; j++)
-            randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
+		Utils::RandomGaussian(randomNumbers, 7);
 
         state[i]._orientation._centerX = static_cast<int>(state[i]._orientation._centerX + state[i].v_xt * _DELTA_T +
                                                           randomNumbers[0] * state[i]._orientation._halfWidthOfTarget +
