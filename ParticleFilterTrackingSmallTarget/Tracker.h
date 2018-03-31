@@ -65,8 +65,10 @@ private:
 
 	void GenerateParticles(const Orientation &initialOrientation) const;
 
+	bool InitSpace();
+
 private:
-	unsigned short _width; // Frame size : width
+	unsigned short _width;  // Frame size : width
 	unsigned short _height; // Frame size : height
 
 	unsigned short* _curFrame;
@@ -85,5 +87,6 @@ private:
 	float* _modelHist;  // 模型直方图
 	float* _particleWeights; // 每个粒子的权重
 	float _piThreshold;      // 权重阈值
-    bool InitSpace();
+	Orientation previousOrientation; // 前一时刻的方位
+	bool CheckDist(Orientation orientation, Orientation previousOrientation);
 };
