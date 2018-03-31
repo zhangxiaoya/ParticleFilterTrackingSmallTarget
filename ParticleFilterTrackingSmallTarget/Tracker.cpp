@@ -213,17 +213,14 @@ int Tracker::BinearySearch(float v, float* NCumuWeight, int N)
 	return 0;
 }
 
-/*
-计算一幅图像中某个区域的彩色直方图分布
-输入参数：
-int targetCenterX, targetCenterY：          指定图像区域的中心点
-int halfWidthOfTarget, halfHeightOfTarget： 指定图像区域的半宽和半高
-unsigned char * imgData ：                  图像数据，按从左至右，从上至下的顺序扫描，
-输出参数：
-float * ColorHist：                         彩色直方图，颜色索引按：
-i = r * G_BIN * B_BIN + g * B_BIN + b排列
-int bins：                                  彩色直方图的条数R_BIN*G_BIN*B_BIN（这里取8x8x8=512）
-*/
+/**********************************************************************
+* 计算特征直方图分布
+* 输入参数：
+* unsigned char * imgData ：           图像数据，按从左至右，从上至下的顺序扫描
+* const Orientation &orientation       目标的方位
+* 输出参数：
+* float *hist：                        特征直方图：
+**********************************************************************/
 void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation)
 {
 	// 直方图各个值赋0
@@ -242,24 +239,78 @@ void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const 
 	// 计算实际高宽和区域起始点, 超出范围的话就用画的框的边界来赋值粒子的区域
 	auto xBeg = orientation._centerX - orientation._halfWidthOfTarget;
 	auto yBeg = orientation._centerY - orientation._halfHeightOfTarget;
-	if (xBeg < 0)
-        xBeg = 0;
-	if (yBeg < 0)
-        yBeg = 0;
+	if (xBeg < 0) xBeg = 0;
+	if (yBeg < 0) yBeg = 0;
+
+
 
 	auto xEnd = orientation._centerX + orientation._halfWidthOfTarget;
 	auto yEnd = orientation._centerY + orientation._halfHeightOfTarget;
-	if (xEnd >= this->_width )
-        xEnd = this->_width - 1;
-	if (yEnd >= this->_height)
-        yEnd = this->_height - 1;
+	if (xEnd >= this->_width ) xEnd = this->_width - 1;
+	if (yEnd >= this->_height) yEnd = this->_height - 1;
+
+	// 计算目标的外接BoundingBox的宽高
+	auto bxBeg = orientation._centerX - 2 * orientation._halfWidthOfTarget;
+	auto byBeg = orientation._centerY - 2 * orientation._halfHeightOfTarget;
+	if (bxBeg < 0) bxBeg = 0;
+	if (byBeg < 0) byBeg = 0;
+
+	auto bxEnd = orientation._centerX + 2 * orientation._halfWidthOfTarget;
+	auto byEnd = orientation._centerY + 2 * orientation._halfHeightOfTarget;
+	if (bxEnd >= this->_width ) bxEnd = this->_width - 1;
+	if (byEnd >= this->_height) byEnd = this->_height - 1;
+
+	// 计算目标区域的像素值均值
+	auto sum = 0;
+	for(int r = yBeg; r <= yEnd; ++r)
+	{
+		for(int c = xBeg; c <= xEnd; ++c)
+		{
+			sum += imageData[r * this->_width + c];
+		}
+	}
+	auto avgInter = (float)(sum * 1.0) / (orientation._halfHeightOfTarget * orientation._halfWidthOfTarget * 4);
+
+	// 计算目标外接BoundingBox的像素均值
+	sum = 0;
+	for(int r = byBeg; r < byEnd; ++ r)
+	{
+		for(int c = bxBeg; c < bxEnd; ++ c)
+		{
+			sum += imageData[r * this->_width + c];
+		}
+	}
+	auto avgBox = (float)(sum * 1.0) / ((yEnd - yBeg + 1) * (yEnd - yBeg + 1));
+
+	// 计算面积
+	auto area = 0;
+	for(int r = yBeg; r <= yEnd; ++r)
+	{
+		for(int c = xBeg; c <= xEnd; ++ c)
+		{
+			if((float)imageData[r * this->_width + c] - avgInter > 0.00001)
+				area ++;
+		}
+	}
+
+	// 计算附加特征
+	auto sumHist = 0.0;
+	// 对比度
+	hist[ BaseBin + 0] = avgInter /avgBox;
+	sumHist += hist[BaseBin + 0];
+	// 均值（进行归一化）
+	hist[BaseBin + 1] = avgInter * 1.0 / (1 << 14);
+	sumHist += hist[BaseBin + 1];
+	// 面积（归一化）
+	hist[BaseBin + 2] = area * 1.0 / (orientation._halfHeightOfTarget * orientation._halfWidthOfTarget * 4);
+	sumHist += hist[BaseBin + 2];
 
 	// 计算半径平方a^2
     auto squareOfRadius = orientation._halfWidthOfTarget * orientation._halfWidthOfTarget +
                           orientation._halfHeightOfTarget * orientation._halfHeightOfTarget;
 
 	// 归一化系数
-	float f = 0.0;
+	float f = sumHist;
 
 	for (auto y = yBeg; y <= yEnd; y++)
 	{
