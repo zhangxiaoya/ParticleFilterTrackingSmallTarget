@@ -109,7 +109,7 @@ int main()
             }
             cv::Mat ColorShow;
 
-            if(trackingStatus == 1 || maxWeight > 0.3)
+            if(true == trackingStatus || maxWeight > 0.3)
             {
                 cvtColor(showFrame, ColorShow, CV_GRAY2BGR);
                 cv::rectangle(ColorShow,
@@ -129,7 +129,7 @@ int main()
             imshow("Frame", ColorShow);
             cv::imwrite(fileFullNameArrResult, ColorShow);
 
-            cv::waitKey(100);
+            cv::waitKey(10);
         }
         std::cout << "All frame count is " << frameIndex << std::endl;
         cv::waitKey(1);

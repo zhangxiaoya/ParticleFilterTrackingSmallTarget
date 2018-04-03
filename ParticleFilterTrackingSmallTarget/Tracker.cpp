@@ -2,35 +2,38 @@
 #include "Tracker.h"
 #include "Utils.h"
 
-/*
+/****************************************
  * 粒子滤波跟踪算法
- */
-int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight)
+ ***************************************/
+bool Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight)
 {
 	SpaceState estimateState;
 
 	// 重采样
-    ReSelect(_particles, _particleWeights);
+    ReSelect();
 
 	// 传播：采样状态方程，对状态变量进行预测
-    Propagate(_particles);
+    Propagate();
 
 	// 观测：对状态量进行更新
-    Observe(_particles, _particleWeights, imageData);
+    Observe(imageData);
 
 	// 估计：对状态量进行估计，提取位置量
-    Estimation(_particles, _particleWeights, estimateState);
+    Estimation(estimateState);
 
+    // 检查是否发生了很大的偏移（跟踪失败）。如果没有，跟踪成功
 	if(CheckDist(estimateState._orientation, previousOrientation))
 	{
+        // 更新目标的方位
 		trackingOrientation = estimateState._orientation;
 
+        // 更新前一时刻的状态
 		previousOrientation = estimateState._orientation;
 
 		// 模型更新
-		ModelUpdate(estimateState, _modelHist, _piThreshold, imageData);
+        ModelUpdate(estimateState, imageData);
 	}
-	else
+	else // 入股失败，重新初始化粒子
 	{
 		GenerateParticles(previousOrientation);
 
@@ -49,18 +52,16 @@ int Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOr
         || trackingOrientation._centerY >= this->_height
         || trackingOrientation._halfWidthOfTarget <= 0
         || trackingOrientation._halfHeightOfTarget <= 0)
-		return -1;
-	return 1;
+		return false;
+	return true;
 }
 
-/*
-初始化系统
-int targetCenterX, targetCenterY：         初始给定的图像目标区域坐标
-int halfWidthOfTarget, halfHeightOfTarget：目标的半宽高
-unsigned char * img：                      图像数据，灰度形式
-int width, height：                        图像宽高
-*/
-int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *imageData)
+/***************************************************************
+ * 初始化系统
+ * const Orientation &initialOrientation      初始给定的图像目标区域方位
+ * unsigned char * imageData：                图像数据，灰度形式
+****************************************************************/
+bool Tracker::Initialize(const Orientation &initialOrientation, unsigned short *imageData)
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
 
@@ -68,14 +69,15 @@ int Tracker::Initialize(const Orientation &initialOrientation, unsigned short *i
 
     // 初始化空间
     if(false == InitSpace())
-        return -1;
+        return false;
 
 	// 计算目标模板直方图
     CalcuModelHistogram(imageData, this->_modelHist, initialOrientation);
 
+    // 初始化粒子
 	GenerateParticles(initialOrientation);
 
-	return 1;
+	return true;
 }
 
 void Tracker::GenerateParticles(const Orientation &initialOrientation) const
@@ -133,7 +135,7 @@ bool Tracker::InitSpace()
     return true;
 }
 
-void Tracker::ReSelect(SpaceState *state, float *weight)
+void Tracker::ReSelect()
 {
 	// 存储新的粒子
 	SpaceState* newParticles = new SpaceState[this->_nParticle];
@@ -142,34 +144,34 @@ void Tracker::ReSelect(SpaceState *state, float *weight)
 	auto resampleIndex = new int[this->_nParticle];
 
 	// 根据权重重新采样
-    ImportanceSampling(weight, resampleIndex);
+    ImportanceSampling(resampleIndex);
 
 	for (auto i = 0; i < this->_nParticle; i++)
-		newParticles[i] = state[resampleIndex[i]];
+		newParticles[i] = this->_particles[resampleIndex[i]];
 
 	for (auto i = 0; i < this->_nParticle; i++)
-		state[i] = newParticles[i];
+        this->_particles[i] = newParticles[i];
 
 	delete[] newParticles;
 	delete[] resampleIndex;
 }
 
-/**
- * \brief 重新进行重要性采样
- * \param wights 对应样本权重数组pi(n)
- * \param ResampleIndex 重采样索引数组(输出)
- * \param NParticle 权重数组、重采样索引数组元素个数
- */
-void Tracker::ImportanceSampling(float *wights, int *ResampleIndex)
+/***************************************************
+ * 重新进行重要性采样
+ * wights 对应样本权重数组pi(n)
+ * ResampleIndex 重采样索引数组(输出)
+ * NParticle 权重数组、重采样索引数组元素个数
+ ***************************************************/
+void Tracker::ImportanceSampling(int *ResampleIndex)
 {
 	// 申请累计权重数组内存，大小为N+1
 	auto cumulateWeight = new float[this->_nParticle + 1];
 	// 计算累计权重
-    NormalizeCumulatedWeight(wights, cumulateWeight);
+    NormalizeCumulatedWeight(this->_particleWeights, cumulateWeight);
 	for (auto i = 0; i < this->_nParticle; i++)
 	{
 		// 随机产生一个[0,1]间均匀分布的数
-		auto randomNumber = rand01();
+		auto randomNumber = Utils::rand01();
 		// 搜索<=randomNumber的最小索引j
 		auto j = BinearySearch(randomNumber, cumulateWeight, this->_nParticle + 1);
 
@@ -182,15 +184,11 @@ void Tracker::ImportanceSampling(float *wights, int *ResampleIndex)
 	delete[] cumulateWeight;
 }
 
-/*
-计算归一化累计概率c'_i
-输入参数：
-float * weight：    为一个有N个权重（概率）的数组
-int N：             数组元素个数
-输出参数：
-float * cumulateWeight： 为一个有N+1个累计权重的数组，
-cumulateWeight[0] = 0;
-*/
+/*****************************************************
+ * 计算归一化累计概率c'_i
+ * float * weight：    为一个有N个权重（概率）的数组
+ * float * cumulateWeight： 为一个有N+1个累计权重的数组
+*****************************************************/
 void Tracker::NormalizeCumulatedWeight(float *weight, float *cumulateWeight)
 {
 	for (auto i = 0; i < this->_nParticle + 1; i++)
@@ -199,15 +197,6 @@ void Tracker::NormalizeCumulatedWeight(float *weight, float *cumulateWeight)
 		cumulateWeight[i + 1] = cumulateWeight[i] + weight[i];
 	for (auto i = 0; i < this->_nParticle + 1; i++)
 		cumulateWeight[i] = cumulateWeight[i] / cumulateWeight[this->_nParticle];
-}
-
-/**
- * \brief 获得一个[0,1]之间的随机数
- * \return 返回一个0到1之间的随机数
- */
-float Tracker::rand01()
-{
-	return (rand() / float(RAND_MAX));
 }
 
 int Tracker::BinearySearch(float v, float* NCumuWeight, int N)
@@ -255,8 +244,6 @@ void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const 
 	auto yBeg = orientation._centerY - orientation._halfHeightOfTarget;
 	if (xBeg < 0) xBeg = 0;
 	if (yBeg < 0) yBeg = 0;
-
-
 
 	auto xEnd = orientation._centerX + orientation._halfWidthOfTarget;
 	auto yEnd = orientation._centerY + orientation._halfHeightOfTarget;
@@ -353,11 +340,11 @@ void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const 
 		hist[i] = hist[i] / f;
 }
 
-/**
- * \brief 根据系统状态方程求取状态预测量, S(t) = A S(t-1) + W(t-1), 其中W(t-1)表示高斯噪声
- * \param state 待求的状态量数组
- */
-void Tracker::Propagate(SpaceState *state)
+/***********************************************************
+ * 根据系统状态方程求取状态预测量,
+ * S(t) = A S(t-1) + W(t-1), 其中W(t-1)表示高斯噪声
+ ***********************************************************/
+void Tracker::Propagate()
 {
     float randomNumbers[7];
 
@@ -367,23 +354,28 @@ void Tracker::Propagate(SpaceState *state)
         // 产生7个随机高斯分布的数
 		Utils::RandomGaussian(randomNumbers, 7);
 
-        state[i]._orientation._centerX = static_cast<int>(state[i]._orientation._centerX + state[i].v_xt * _DELTA_T +
-                                                          randomNumbers[0] * state[i]._orientation._halfWidthOfTarget +
-                                                          0.5);
-        state[i]._orientation._centerY = static_cast<int>(state[i]._orientation._centerY + state[i].v_yt * _DELTA_T +
-                                                          randomNumbers[1] * state[i]._orientation._halfHeightOfTarget +
-                                                          0.5);
-        state[i].v_xt = state[i].v_xt + randomNumbers[2] * _VELOCITY_DISTURB;
-        state[i].v_yt = state[i].v_yt + randomNumbers[3] * _VELOCITY_DISTURB;
-        state[i]._orientation._halfWidthOfTarget = static_cast<int>(state[i]._orientation._halfWidthOfTarget +
-                                                                    state[i]._orientation._halfWidthOfTarget *
-                                                                    state[i].at_dot +
-                                                                    randomNumbers[4] * _SCALE_DISTURB + 0.5);
-        state[i]._orientation._halfHeightOfTarget = static_cast<int>(state[i]._orientation._halfHeightOfTarget +
-                                                                     state[i]._orientation._halfHeightOfTarget *
-                                                                     state[i].at_dot +
-                                                                     randomNumbers[5] * _SCALE_DISTURB + 0.5);
-        state[i].at_dot = state[i].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
+        _particles[i]._orientation._centerX = static_cast<int>(_particles[i]._orientation._centerX +
+                                                               _particles[i].v_xt * _DELTA_T +
+                                                               randomNumbers[0] *
+                                                               _particles[i]._orientation._halfWidthOfTarget +
+                                                               0.5);
+        _particles[i]._orientation._centerY = static_cast<int>(_particles[i]._orientation._centerY +
+                                                               _particles[i].v_yt * _DELTA_T +
+                                                               randomNumbers[1] *
+                                                               _particles[i]._orientation._halfHeightOfTarget +
+                                                               0.5);
+        _particles[i].v_xt = _particles[i].v_xt + randomNumbers[2] * _VELOCITY_DISTURB;
+        _particles[i].v_yt = _particles[i].v_yt + randomNumbers[3] * _VELOCITY_DISTURB;
+        _particles[i]._orientation._halfWidthOfTarget = static_cast<int>(_particles[i]._orientation._halfWidthOfTarget +
+                                                                         _particles[i]._orientation._halfWidthOfTarget *
+                                                                         _particles[i].at_dot +
+                                                                         randomNumbers[4] * _SCALE_DISTURB + 0.5);
+        _particles[i]._orientation._halfHeightOfTarget = static_cast<int>(
+                _particles[i]._orientation._halfHeightOfTarget +
+                _particles[i]._orientation._halfHeightOfTarget *
+                _particles[i].at_dot +
+                randomNumbers[5] * _SCALE_DISTURB + 0.5);
+        _particles[i].at_dot = _particles[i].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
 
 //        circle(_trackingImg, cv::Point(state[i]._orientation._centerX, state[i]._orientation._centerY), 3,
 //               cv::Scalar(0, 255, 0), 1, 8, 3);
@@ -391,40 +383,34 @@ void Tracker::Propagate(SpaceState *state)
 }
 
 
-/*
-观测，根据状态集合St中的每一个采样，观测直方图，然后
-更新估计量，获得新的权重概率
-输入参数：
-SPACESTATE * state：      状态量数组
-unsigned char * image：   图像数据，按从左至右，从上至下的顺序扫描
-float * ObjectHist：      目标直方图
-int hbins：               目标直方图条数
-输出参数：
-float * weight：          更新后的权重
-*/
-void Tracker::Observe(SpaceState *state, float *weight, unsigned short *imageData)
+/*************************************************************
+ * 观测，根据状态集合St中的每一个采样，观测直方图，然后
+ * 更新估计量，获得新的权重概率
+ * unsigned char * image：   图像数据，按从左至右，从上至下的顺序扫描
+**************************************************************/
+void Tracker::Observe(unsigned short *imageData)
 {
 	float * hist = new float[_nBin];
 
 	for (auto i = 0; i < this->_nParticle; i++)
 	{
 		// (1) 计算彩色直方图分布
-        CalcuModelHistogram(imageData, hist, state[i]._orientation);
+        CalcuModelHistogram(imageData, hist, this->_particles[i]._orientation);
 		// (2) Bhattacharyya系数
 		float rho = CalcuBhattacharyya(hist, _modelHist);
 		// (3) 根据计算得的Bhattacharyya系数计算各个权重值
-		weight[i] = CalcuWeightedPi(rho);
+		this->_particleWeights[i] = CalcuWeightedPi(rho);
 	}
 
 	delete[] hist;
 }
 
-/**
- * \brief 计算Bhattachryya系数
- * \param histA 直方图A
- * \param histB 直方图B
- * \return Bhattacharyya系数
- */
+/*****************************************************************
+ * 计算Bhattachryya系数
+ * histA 直方图A
+ * histB 直方图B
+ * Bhattacharyya系数
+ *****************************************************************/
 float Tracker::CalcuBhattacharyya(float* histA, float* histB) const
 {
 	float rho = 0.0;
@@ -440,16 +426,11 @@ float Tracker::CalcuWeightedPi(float rho) const
 	return pi_n;
 }
 
-/*
-估计，根据权重，估计一个状态量作为跟踪输出
-输入参数：
-SPACESTATE * state：      状态量数组
-float * weight：          对应权重
-int N：                   状态量数组维数
-输出参数：
-SPACESTATE * EstState：   估计出的状态量
-*/
-void Tracker::Estimation(SpaceState *particles, float *weights, SpaceState &EstState)
+/**********************************************
+ * 估计，根据权重，估计一个状态量作为跟踪输出
+ * SPACESTATE * EstState：   估计出的状态量
+**********************************************/
+void Tracker::Estimation(SpaceState &EstState)
 {
 	float at_dot = 0;
 	float halfWidthOfTarget = 0;
@@ -461,14 +442,14 @@ void Tracker::Estimation(SpaceState *particles, float *weights, SpaceState &EstS
 	float weight_sum = 0;
 	for (auto i = 0; i < this->_nParticle; i++) /* 求和 */
 	{
-		at_dot += particles[i].at_dot * weights[i];
-		halfWidthOfTarget += particles[i]._orientation._halfWidthOfTarget * weights[i];
-		halfHeightOfTarget += particles[i]._orientation._halfHeightOfTarget * weights[i];
-		v_xt += particles[i].v_xt * weights[i];
-		v_yt += particles[i].v_yt * weights[i];
-		centerX += particles[i]._orientation._centerX * weights[i];
-		centerY += particles[i]._orientation._centerY * weights[i];
-		weight_sum += weights[i];
+		at_dot += _particles[i].at_dot * _particleWeights[i];
+		halfWidthOfTarget += _particles[i]._orientation._halfWidthOfTarget * _particleWeights[i];
+		halfHeightOfTarget += _particles[i]._orientation._halfHeightOfTarget * _particleWeights[i];
+		v_xt += _particles[i].v_xt * _particleWeights[i];
+		v_yt += _particles[i].v_yt * _particleWeights[i];
+		centerX += _particles[i]._orientation._centerX * _particleWeights[i];
+		centerY += _particles[i]._orientation._centerY * _particleWeights[i];
+		weight_sum += _particleWeights[i];
 	}
 
 	// 求平均
@@ -485,32 +466,26 @@ void Tracker::Estimation(SpaceState *particles, float *weights, SpaceState &EstS
 }
 
 /************************************************************
-模型更新
-输入参数：
-SPACESTATE EstState：   状态量的估计值
-float * TargetHist：    目标直方图
-int bins：              直方图条数
-float PiT：             阈值（权重阈值）
-unsigned char * img：   图像数据，RGB形式
-输出：
-float * TargetHist：    更新的目标直方图
+ * 模型更新
+ * SPACESTATE EstState       状态量的估计值
+ * unsigned short* imageData 图像数据
 ************************************************************/
-void Tracker::ModelUpdate(SpaceState EstState, float *TargetHist, float PiT, unsigned short *imageData)
+void Tracker::ModelUpdate(SpaceState EstState, unsigned short *imageData)
 {
 	auto estimatedHist = new float[this->_nBin];
 
 	// (1)在估计值处计算目标直方图
     CalcuModelHistogram(imageData, estimatedHist, EstState._orientation);
 	// (2)计算Bhattacharyya系数
-	float Bha = CalcuBhattacharyya(estimatedHist, TargetHist);
+	float Bha = CalcuBhattacharyya(estimatedHist, _modelHist);
 	// (3)计算概率权重
 	float Pi_E = CalcuWeightedPi(Bha);
 
-	if (Pi_E > PiT)
+	if (Pi_E > _piThreshold)
 	{
 		for (auto i = 0; i < this->_nBin; i++)
 		{
-            TargetHist[i] = static_cast<float>((1.0 - ALPHA_COEFFICIENT) * TargetHist[i] +
+            _modelHist[i] = static_cast<float>((1.0 - ALPHA_COEFFICIENT) * _modelHist[i] +
                                                ALPHA_COEFFICIENT * estimatedHist[i]);
 		}
 	}
@@ -518,8 +493,8 @@ void Tracker::ModelUpdate(SpaceState EstState, float *TargetHist, float PiT, uns
 }
 
 /*********************************************************
- * * 功能： 初始化设置粒子的数量
- * * 参数： 粒子数量
+ * 功能： 初始化设置粒子的数量
+ * 参数： 粒子数量
  ********************************************************/
 void Tracker::SetParticleCount(const unsigned int particleCount)
 {

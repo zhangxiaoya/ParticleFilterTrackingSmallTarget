@@ -32,36 +32,34 @@ public:
 
     ~Tracker();
 
-	int ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight);
+	bool ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight);
 
-	int Initialize(const Orientation &initialOrientation, unsigned short *imageData);
+	bool Initialize(const Orientation &initialOrientation, unsigned short *imageData);
 
     void SetParticleCount(unsigned int particleCount);
 
 private:
-	void ReSelect(SpaceState *state, float *weight);
+	void ReSelect();
 
-	void ImportanceSampling(float *wights, int *ResampleIndex);
+	void ImportanceSampling(int *ResampleIndex);
 
 	void NormalizeCumulatedWeight(float *weight, float *cumulateWeight);
 
-	static float rand01();
-
-	static int BinearySearch(float value, float* NCumuWeight, int N);
+    static int BinearySearch(float value, float* NCumuWeight, int N);
 
 	void CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation);
 
-	void Propagate(SpaceState *state);
+	void Propagate();
 
-	void Observe(SpaceState *state, float *weight, unsigned short *imageData);
+	void Observe(unsigned short *imageData);
 
 	float CalcuBhattacharyya(float* histA, float* histB) const;
 
 	float CalcuWeightedPi(float rho) const;
 
-	void Estimation(SpaceState *particles, float *weights, SpaceState &EstState);
+	void Estimation(SpaceState &EstState);
 
-	void ModelUpdate(SpaceState EstState, float *TargetHist, float PiT, unsigned short *imageData);
+	void ModelUpdate(SpaceState EstState, unsigned short *imageData);
 
 	void GenerateParticles(const Orientation &initialOrientation) const;
 
