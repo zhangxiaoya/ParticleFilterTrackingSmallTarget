@@ -1,12 +1,22 @@
 #pragma once
 
-struct SpaceState
-{						  /* ×´Ì¬¿Õ¼ä±äÁ¿ */
-	int centerX;               /* x×ø±êÎ»ÖÃ */
-	int centerY;               /* y×ø±êÎ»ÖÃ */
-	float v_xt;           /* x·½ÏòÔË¶¯ËÙ¶È */
-	float v_yt;           /* y·½ÏòÔË¶¯ËÙ¶È */
-	int _halfWidthOfTarget;              /* x·½Ïò°ë´°¿í */
-	int _halfHeightOfTarget;              /* y·½Ïò°ë´°¿í */
-	float at_dot;         /* ³ß¶È±ä»»ËÙ¶È£¬Á£×ÓËù´ú±íµÄÄÇÒ»Æ¬ÇøÓòµÄ³ß¶È±ä»¯ËÙ¶È */
+#include "Orientation.h"
+
+/* çŠ¶æ€ç©ºé—´å˜é‡ */
+class SpaceState
+{
+public:
+	explicit SpaceState(Orientation orientation = Orientation(),
+						float v_xt = 0.0,
+						float v_yt = 0.0,
+						float at_dot = 0.0)
+			: _orientation(orientation),
+			  v_xt(v_xt),
+			  v_yt(v_yt),
+			  at_dot(at_dot) {}
+
+	Orientation _orientation;
+	float v_xt;           /* xæ–¹å‘è¿åŠ¨é€Ÿåº¦ */
+	float v_yt;           /* yæ–¹å‘è¿åŠ¨é€Ÿåº¦ */
+	float at_dot;         /* å°ºåº¦å˜æ¢é€Ÿåº¦ï¼Œç²’å­æ‰€ä»£è¡¨çš„é‚£ä¸€ç‰‡åŒºåŸŸçš„å°ºåº¦å˜åŒ–é€Ÿåº¦ */
 };

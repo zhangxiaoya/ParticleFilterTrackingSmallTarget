@@ -1,105 +1,157 @@
-#include <iostream>
-#include <highgui/highgui.hpp>
+	#include <iostream>
+#include <opencv2/highgui/highgui.hpp>
+#include <iomanip>
+#include <opencv/cv.hpp>
 
 #include "Tracker.h"
 #include "BinaryFileStream.h"
-#include <iomanip>
 
+#ifndef FrameWidth
 #define FrameWidth 640
+#endif
+
+#ifndef FrameHeight
 #define FrameHeight 512
+#endif
+
+void GetShowFrames(const Mat &frame, Mat &showFrame);
 
 int main()
 {
-	// ÎÄ¼şÃû¸ñÊ½¶¨Òå
-	string fileFullNameFormat = "D:\\Bags\\Data\\IRData\\trackingData\\Segment_%02d.dat";
-	// ÎÄ¼şÃû×Ö·û´®´æ´¢
-	char fileFullNameArr[200];
+    // å®šä¹‰å›¾åƒå®½å’Œé«˜
+    unsigned short width = FrameWidth;
+    unsigned short height = FrameHeight;
 
-	// ³õÊ¼»¯²Ù×÷
-	// ³õÊ¼»¯ÎÄ¼şÃû
-	sprintf_s(fileFullNameArr, fileFullNameFormat.c_str(), 0);
-	// ³õÊ¼»¯ÎÄ¼şÁ÷¶ÁÈ¡¶ÔÏó
-	BinaryFileReader fileReader(FrameWidth, FrameHeight);
-	fileReader.Init(string(fileFullNameArr));
+    // æ–‡ä»¶åæ ¼å¼å®šä¹‰
+    string fileFullNameFormat = "/home/ynzhang/Desktop/Data/trackingData/Segment_%02d.dat";
+    string fileFullNameFormatResult = "/home/ynzhang/Desktop/Data/trackingData/results/Segment_%06d.png";
+    // æ–‡ä»¶åå­—ç¬¦ä¸²å­˜å‚¨
+    char fileFullNameArr[200];
+    char fileFullNameArrResult[200];
+    // åˆå§‹åŒ–æ–‡ä»¶å
+    sprintf(fileFullNameArr, fileFullNameFormat.c_str(), 0);
+    sprintf(fileFullNameArrResult, fileFullNameFormatResult.c_str(), 0);
+    // å®šä¹‰ä¸€ä¸ªæ–‡ä»¶æµè¯»å–å¯¹è±¡
+    BinaryFileReader fileReader(width, height);
+    // åˆå§‹åŒ–æ–‡ä»¶æµè¯»å–å¯¹è±¡
+    fileReader.Init(string(fileFullNameArr));
 
-	// ¶¨ÒåÍ¼ÏñÖ¡
-	Mat frame(FrameHeight, FrameWidth, CV_16UC1);
-	// ¶¨Òå¿ÉÏÔÊ¾Í¼ÏñÖ¡
-	Mat showFrame(FrameHeight, FrameWidth, CV_8UC1);
+    // å®šä¹‰å›¾åƒå¸§
+    Mat frame(height, width, CV_16UC1);
+    // å®šä¹‰å¯æ˜¾ç¤ºå›¾åƒå¸§
+    Mat showFrame(height, width, CV_8UC1);
 
-	// ³õÊ¼»¯³õÊ¼Î»ÖÃ
-	cv::Rect rect(304, 259, 4, 4);
-	Tracker tracker(FrameWidth,FrameHeight);
+    // åˆå§‹åŒ–åˆå§‹ä½ç½®
+    Tracker tracker(width, height);
 
-	bool isFirstFrame = true;
-	float maxWeight = 0;
-	int centerX = 306;
-	int centerY = 261;
-	int width = FrameWidth;
-	int height = FrameHeight;
-	int halfWidthOfTarget = 5;
-	int halfHeightOfTarget = 5;
+    // è®¾ç½®ç²’å­æ•°é‡
+    tracker.SetParticleCount(100);
 
-	// Ñ­»·±éÀúËùÓĞµÄÍ¼ÏñÎÄ¼ş
-	for(auto fileIdx = 9; fileIdx < 10; ++ fileIdx)
-	{
-		// ¸ñÊ½»¯ÎÄ¼şÃû
-		sprintf_s(fileFullNameArr, fileFullNameFormat.c_str(), fileIdx);
-		// ¶ÁÈ¡ÎÄ¼şÁ÷¶ÔÏóÖØĞÂ³õÊ¼»¯¶ÁÈ¡²Ù×÷
-		fileReader.ResetFileStream(string(fileFullNameArr));
-		// ´òÓ¡ÎÄ¼ş±àºÅ
-		std::cout << "File Index = " << std::setw(6) << fileIdx << std::endl;
+    // æ˜¯å¦æ˜¯ç¬¬ä¸€å¸§çš„æ ‡è¯†
+    bool isFirstFrame = true;
+    // ç²’å­æœ€å¤§æƒé‡è¿”å›å€¼
+    float maxWeight = 0;
 
-		// Ñ­»·±éÀú¸ÃÎÄ¼şÖĞµÄËùÓĞÍ¼Ïñ
-		auto frameIndex = 0;
+    // ç›®æ ‡åˆå§‹åŒ–ä½ç½®
+    int initialCenterX = 306;
+    int initialCenterY = 261;
 
-		unsigned short* imgDataPointer = nullptr;
-		while (fileReader.GetOneFrame(frame, imgDataPointer))
-		{
-			if(isFirstFrame)
-			{
-				tracker.Initialize(306, 261, halfWidthOfTarget, halfHeightOfTarget, imgDataPointer, FrameWidth, FrameHeight);
-				isFirstFrame = false;
-			}
-			frameIndex++;
+    // ç›®æ ‡åˆå§‹åŒ–å®½å’Œé«˜
+    int initialHalfWidthOfTarget = 3;
+    int initialHalfHeightOfTarget = 3;
 
-			auto trackingStatus = tracker.ParticleTracking(imgDataPointer, FrameWidth, FrameHeight, centerX, centerY, halfWidthOfTarget, halfHeightOfTarget, maxWeight);
+    // å‰ä¸€æ—¶åˆ»çš„æ–¹ä½
+    Orientation previousOrientation(initialCenterX,
+                                    initialCenterY,
+                                    initialHalfWidthOfTarget,
+                                    initialHalfHeightOfTarget);
 
+    // å½“å‰æ—¶åˆ»è·Ÿè¸ªç›®æ ‡çš„æ–¹ä½
+    Orientation currentOrientation(initialCenterX,
+                                   initialCenterY,
+                                   initialHalfWidthOfTarget,
+                                   initialHalfHeightOfTarget);
 
-			// ¿ÉÊÓ»¯µÍ8Î»ÏñËØĞÅÏ¢
-			for (auto r = 0; r < FrameHeight; ++r)
-			{
-				auto ptrOriginal = showFrame.ptr<uchar>(r);
-				auto ptrResult = frame.ptr<unsigned short>(r);
-				for (auto c = 0; c < FrameWidth; ++c)
-				{
-					auto pixelValue = ptrResult[c];
-					ptrOriginal[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
-				}
-			}
+    // ä»å“ªä¸€ä¸ªæ–‡ä»¶å¼€å§‹ï¼Œç›®æ ‡è¿›å…¥è§†é‡
+    int startFileIndex = 9;
+    // åˆ°å“ªä¸€ä¸ªæ–‡ä»¶ç»“æŸï¼Œç›®æ ‡ç¦»å¼€è§†é‡
+    int endFileIndex = 11;
 
-			if(trackingStatus == 1 || maxWeight > 0.0001)
-			{
-				cv::rectangle(showFrame,
-					cv::Point(centerX - halfWidthOfTarget, centerY - halfHeightOfTarget),
-					cv::Point(centerX + halfWidthOfTarget, centerY + halfHeightOfTarget),
-					cv::Scalar(255, 0, 0), 1, 8, 0);
-			}
-			else
-			{
-				std::cout << "Target Lost" << std::endl;
-			}
+    // å¾ªç¯éå†æ‰€æœ‰çš„å›¾åƒæ–‡ä»¶
+    for(auto fileIdx = startFileIndex; fileIdx < endFileIndex; ++ fileIdx)
+    {
+        // æ ¼å¼åŒ–æ–‡ä»¶å
+        sprintf(fileFullNameArr, fileFullNameFormat.c_str(), fileIdx);
+        // è¯»å–æ–‡ä»¶æµå¯¹è±¡é‡æ–°åˆå§‹åŒ–è¯»å–æ“ä½œ
+        fileReader.ResetFileStream(string(fileFullNameArr));
+        // æ‰“å°æ–‡ä»¶ç¼–å·
+        std::cout << "File Index = " << std::setw(6) << fileIdx << std::endl;
 
-			imshow("Frame", showFrame);
-			cv::waitKey(100);
-		}
-		std::cout << "All frame count is " << frameIndex << std::endl;
-		cv::waitKey(1);
-	}
+        // éå†è¯¥æ–‡ä»¶ä¸­çš„å›¾åƒ
+        auto frameIndex = 0;
 
-	// Ïú»ÙÏÔÊ¾Í¼Ïñ´°¿Ú¾ä±ú
-	cv::destroyAllWindows();
+        unsigned short* imgDataPointer = nullptr;
+        while (fileReader.GetOneFrame(frame, imgDataPointer))
+        {
+            int trackingStatus = 1;
+            GetShowFrames(frame, showFrame);
+            if(isFirstFrame)
+            {
+                tracker.Initialize(previousOrientation, imgDataPointer);
 
-	system("pause");
-	return 0;
+                isFirstFrame = false;
+            }
+            else
+            {
+                trackingStatus = tracker.ParticleTracking(imgDataPointer, currentOrientation, maxWeight);
+
+                std::cout << "Max weight = " << std::setw(10) << maxWeight << std::endl;
+            }
+            cv::Mat ColorShow;
+
+            if(true == trackingStatus || maxWeight > 0.3)
+            {
+                cvtColor(showFrame, ColorShow, CV_GRAY2BGR);
+                cv::rectangle(ColorShow,
+                              cv::Point(currentOrientation._centerX - 2 - currentOrientation._halfWidthOfTarget,
+                                        currentOrientation._centerY - 2 - currentOrientation._halfHeightOfTarget),
+                              cv::Point(currentOrientation._centerX + 2 + currentOrientation._halfWidthOfTarget,
+                                        currentOrientation._centerY + 2 + currentOrientation._halfHeightOfTarget),
+                              cv::Scalar(0, 255, 0));
+            }
+            else
+            {
+                std::cout << "Target Lost" << std::endl;
+            }
+            sprintf(fileFullNameArrResult, fileFullNameFormatResult.c_str(), frameIndex);
+            frameIndex++;
+
+            imshow("Frame", ColorShow);
+            cv::imwrite(fileFullNameArrResult, ColorShow);
+
+            cv::waitKey(10);
+        }
+        std::cout << "All frame count is " << frameIndex << std::endl;
+        cv::waitKey(1);
+    }
+
+    // é”€æ¯æ˜¾ç¤ºå›¾åƒçª—å£å¥æŸ„
+    cv::destroyAllWindows();
+
+    return 0;
+}
+
+// å¯è§†åŒ–ä½8ä½åƒç´ ä¿¡æ¯
+void GetShowFrames(const Mat &frame, Mat &showFrame)
+{
+    for (auto r = 0; r < FrameHeight; ++r)
+    {
+        auto ptrOriginal = showFrame.ptr<uchar>(r);
+        auto ptrResult = frame.ptr<unsigned short>(r);
+        for (auto c = 0; c < FrameWidth; ++c)
+        {
+            auto pixelValue = ptrResult[c];
+            ptrOriginal[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
+        }
+    }
 }

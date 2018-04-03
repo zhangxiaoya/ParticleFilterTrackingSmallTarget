@@ -1,208 +1,202 @@
+#include <iostream>
 #include "Tracker.h"
-#include "State.h"
-#include <ctime>
-#include <core/core.hpp>
+#include "Utils.h"
 
-int Tracker::ParticleTracking(unsigned short* image, int width, int height, int& centerX, int& centerY, int& halfWidthOfTarget, int& halfHeightOfTarget, float& max_weight)
+/****************************************
+ * ç²’å­æ»¤æ³¢è·Ÿè¸ªç®—æ³•
+ ***************************************/
+bool Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight)
 {
 	SpaceState estimateState;
 
-	// ÖØ²ÉÑù
-	ReSelect(_particles, _particleWeights, _nParticle);
+	// é‡é‡‡æ ·
+    ReSelect();
 
-	// ´«²¥£º²ÉÑù×´Ì¬·½³Ì£¬¶Ô×´Ì¬±äÁ¿½øĞĞÔ¤²â
-	Propagate(_particles, _nParticle);
+	// ä¼ æ’­ï¼šé‡‡æ ·çŠ¶æ€æ–¹ç¨‹ï¼Œå¯¹çŠ¶æ€å˜é‡è¿›è¡Œé¢„æµ‹
+    Propagate();
 
-	// ¹Û²â£º¶Ô×´Ì¬Á¿½øĞĞ¸üĞÂ
-	Observe(_particles, _particleWeights, _nParticle, image, width, height);
+	// è§‚æµ‹ï¼šå¯¹çŠ¶æ€é‡è¿›è¡Œæ›´æ–°
+    Observe(imageData);
 
-	// ¹À¼Æ£º¶Ô×´Ì¬Á¿½øĞĞ¹À¼Æ£¬ÌáÈ¡Î»ÖÃÁ¿
-	Estimation(_particles, _particleWeights, _nParticle, estimateState);
+	// ä¼°è®¡ï¼šå¯¹çŠ¶æ€é‡è¿›è¡Œä¼°è®¡ï¼Œæå–ä½ç½®é‡
+    Estimation(estimateState);
 
-	centerX = estimateState.centerX;
-	centerY = estimateState.centerY;
-	halfWidthOfTarget = estimateState._halfWidthOfTarget;
-	halfHeightOfTarget = estimateState._halfHeightOfTarget;
+    // æ£€æŸ¥æ˜¯å¦å‘ç”Ÿäº†å¾ˆå¤§çš„åç§»ï¼ˆè·Ÿè¸ªå¤±è´¥ï¼‰ã€‚å¦‚æœæ²¡æœ‰ï¼Œè·Ÿè¸ªæˆåŠŸ
+	if(CheckDist(estimateState._orientation, previousOrientation))
+	{
+        // æ›´æ–°ç›®æ ‡çš„æ–¹ä½
+		trackingOrientation = estimateState._orientation;
 
-	// Ä£ĞÍ¸üĞÂ
-	ModelUpdate(estimateState, _modelHist, _nbin, _piThreshold, image, width, height);
+        // æ›´æ–°å‰ä¸€æ—¶åˆ»çš„çŠ¶æ€
+		previousOrientation = estimateState._orientation;
 
-	// ¼ÆËã×î´óÈ¨ÖØÖµ
-	max_weight = _particleWeights[0];
+		// æ¨¡å‹æ›´æ–°
+        ModelUpdate(estimateState, imageData);
+	}
+	else // å…¥è‚¡å¤±è´¥ï¼Œé‡æ–°åˆå§‹åŒ–ç²’å­
+	{
+		GenerateParticles(previousOrientation);
+
+		std::cout << "Lost target!" << std::endl;
+	}
+
+	// è®¡ç®—æœ€å¤§æƒé‡å€¼
+	maxWeight = _particleWeights[0];
 	for (auto i = 1; i < _nParticle; i++)
-		max_weight = max_weight < _particleWeights[i] ? _particleWeights[i] : max_weight;
-	// ½øĞĞºÏ·¨ĞÔ¼ìÑé£¬²»ºÏ·¨·µ»Ø-1
-	if (centerX < 0 || centerY < 0 || centerX >= width || centerY >= height || halfWidthOfTarget <= 0 || halfHeightOfTarget <= 0)
-		return -1;
-	return 1;
+		maxWeight = maxWeight < _particleWeights[i] ? _particleWeights[i] : maxWeight;
+
+	// è¿›è¡Œåˆæ³•æ€§æ£€éªŒï¼Œä¸åˆæ³•è¿”å›-1
+	if (trackingOrientation._centerX < 0
+        || trackingOrientation._centerY < 0
+        || trackingOrientation._centerX >= this->_width
+        || trackingOrientation._centerY >= this->_height
+        || trackingOrientation._halfWidthOfTarget <= 0
+        || trackingOrientation._halfHeightOfTarget <= 0)
+		return false;
+	return true;
 }
 
-/*
-³õÊ¼»¯ÏµÍ³
-int targetCenterX, targetCenterY£º         ³õÊ¼¸ø¶¨µÄÍ¼ÏñÄ¿±êÇøÓò×ø±ê
-int halfWidthOfTarget, halfHeightOfTarget£ºÄ¿±êµÄ°ë¿í¸ß
-unsigned char * img£º                      Í¼ÏñÊı¾İ£¬»Ò¶ÈĞÎÊ½
-int width, height£º                        Í¼Ïñ¿í¸ß
-*/
-int Tracker::Initialize(int targetCenterX, int targetCenterY, int halfWidthOfTarget, int halfHeightOfTarget, unsigned short* imgData, int width, int height)
+/***************************************************************
+ * åˆå§‹åŒ–ç³»ç»Ÿ
+ * const Orientation &initialOrientation      åˆå§‹ç»™å®šçš„å›¾åƒç›®æ ‡åŒºåŸŸæ–¹ä½
+ * unsigned char * imageDataï¼š                å›¾åƒæ•°æ®ï¼Œç°åº¦å½¢å¼
+****************************************************************/
+bool Tracker::Initialize(const Orientation &initialOrientation, unsigned short *imageData)
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
 
-	// ÉêÇë×´Ì¬Êı×éµÄ¿Õ¼ä
-	_particles = new SpaceState[_nParticle];
-	// ÉêÇëÁ£×ÓÈ¨ÖØÊı×éµÄ¿Õ¼ä
-	_particleWeights = new float[_nParticle];
-	// È·¶¨Ö±·½Í¼ÌõÊı
-	_nbin = BIN;
-	// ÉêÇëÖ±·½Í¼ÄÚ´æ
-	_modelHist = new float[_nbin];
-	if (_modelHist == nullptr)
-		return (-1);
+	previousOrientation = initialOrientation;
 
-	// ¼ÆËãÄ¿±êÄ£°åÖ±·½Í¼
-	CalcuModelHistogram(targetCenterX, targetCenterY, halfWidthOfTarget, halfHeightOfTarget, imgData, width, height, _modelHist);
+    // åˆå§‹åŒ–ç©ºé—´
+    if(false == InitSpace())
+        return false;
 
-	// ³õÊ¼»¯Á£×Ó×´Ì¬(ÒÔ(x0,y0,1,1,Wx,Hy,0.1)ÎªÖĞĞÄ³ÊN(0,0.4)ÕıÌ¬·Ö²¼)
-	_particles[0].centerX = targetCenterX;
-	_particles[0].centerY = targetCenterY;
+	// è®¡ç®—ç›®æ ‡æ¨¡æ¿ç›´æ–¹å›¾
+    CalcuModelHistogram(imageData, this->_modelHist, initialOrientation);
+
+    // åˆå§‹åŒ–ç²’å­
+	GenerateParticles(initialOrientation);
+
+	return true;
+}
+
+void Tracker::GenerateParticles(const Orientation &initialOrientation) const
+{
+	// åˆå§‹åŒ–ç²’å­çŠ¶æ€(ä»¥(x0,y0,1,1,Wx,Hy,0.1)ä¸ºä¸­å¿ƒå‘ˆN(0,0.4)æ­£æ€åˆ†å¸ƒ)
+	_particles[0]._orientation = initialOrientation;
 	_particles[0].v_xt = static_cast<float>(0.0); // 1.0
 	_particles[0].v_yt = static_cast<float>(0.0); // 1.0
-	_particles[0]._halfWidthOfTarget = halfWidthOfTarget;
-	_particles[0]._halfHeightOfTarget = halfHeightOfTarget;
 	_particles[0].at_dot = static_cast<float>(0.0); // 0.1
 	_particleWeights[0] = static_cast<float>(1.0 / _nParticle); // 0.9;
 
 	float randomNumbers[7];
 	for (auto i = 1; i < _nParticle; i++)
 	{
-		// ²úÉú7¸öËæ»ú¸ßË¹·Ö²¼µÄÊı
-		for (auto j = 0; j < 7; j++)
-			randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
+		// äº§ç”Ÿ7ä¸ªéšæœºé«˜æ–¯åˆ†å¸ƒçš„æ•°
+        Utils::RandomGaussian(randomNumbers, 7);
 
-		_particles[i].centerX = static_cast<int>(_particles[0].centerX + randomNumbers[0] * halfWidthOfTarget);
-		_particles[i].centerY = static_cast<int>(_particles[0].centerY + randomNumbers[1] * halfHeightOfTarget);
-		_particles[i].v_xt = static_cast<float>(_particles[0].v_xt + randomNumbers[2] * _VELOCITY_DISTURB);
-		_particles[i].v_yt = static_cast<float>(_particles[0].v_yt + randomNumbers[3] * _VELOCITY_DISTURB);
-		_particles[i]._halfWidthOfTarget = static_cast<int>(_particles[0]._halfWidthOfTarget + randomNumbers[4] * _SCALE_DISTURB);
-		_particles[i]._halfHeightOfTarget = static_cast<int>(_particles[0]._halfHeightOfTarget + randomNumbers[5] * _SCALE_DISTURB);
-		_particles[i].at_dot = static_cast<float>(_particles[0].at_dot + randomNumbers[6] * _SCALE_CHANGE_D);
+        _particles[i]._orientation._centerX = static_cast<int>(_particles[0]._orientation._centerX + randomNumbers[0] *
+																									 initialOrientation._halfWidthOfTarget);
+        _particles[i]._orientation._centerY = static_cast<int>(_particles[0]._orientation._centerY + randomNumbers[1] *
+																									 initialOrientation._halfHeightOfTarget);
+        _particles[i].v_xt = _particles[0].v_xt + randomNumbers[2] * _VELOCITY_DISTURB;
+        _particles[i].v_yt = _particles[0].v_yt + randomNumbers[3] * _VELOCITY_DISTURB;
+        _particles[i]._orientation._halfWidthOfTarget = static_cast<int>(_particles[0]._orientation._halfWidthOfTarget +
+																		 randomNumbers[4] * _SCALE_DISTURB);
+        _particles[i]._orientation._halfHeightOfTarget = static_cast<int>(
+                _particles[0]._orientation._halfHeightOfTarget + randomNumbers[5] * _SCALE_DISTURB);
+        _particles[i].at_dot = _particles[0].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
 
-		// È¨ÖØÍ³Ò»Îª1/N£¬ÈÃÃ¿¸öÁ£×ÓÓĞÏàµÈµÄ»ú»á
+		// æƒé‡ç»Ÿä¸€ä¸º1/Nï¼Œè®©æ¯ä¸ªç²’å­æœ‰ç›¸ç­‰çš„æœºä¼š
 		_particleWeights[i] = static_cast<float>(1.0 / _nParticle);
 	}
-	return 1;
 }
 
-void Tracker::ReSelect(SpaceState* state, float* weight, int nParticle)
+/*****************************************
+ * åˆå§‹åŒ– ç©ºé—´
+ *****************************************/
+bool Tracker::InitSpace()
 {
-	// ´æ´¢ĞÂµÄÁ£×Ó
-	SpaceState* newParticles = new SpaceState[nParticle];
+    // ç”³è¯·çŠ¶æ€æ•°ç»„çš„ç©ºé—´
+    this->_particles = new SpaceState[_nParticle];
+    if(nullptr == this->_particles)
+        return false;
 
-	// Í³¼ÆµÄËæ»úÊıËùÔÙÇø¼äµÄË÷Òı
-	int* resampleIndex = new int[nParticle];
+    // ç”³è¯·ç²’å­æƒé‡æ•°ç»„çš„ç©ºé—´
+    _particleWeights = new float[_nParticle];
+    if(nullptr == this->_particleWeights)
+        return false;
 
-	// ¸ù¾İÈ¨ÖØÖØĞÂ²ÉÑù
-	ImportanceSampling(weight, resampleIndex, nParticle);
+    // ç”³è¯·å­˜æ”¾æ¨¡æ¿çš„å†…å­˜
+    this->_modelHist = new float[_nBin];
+    if (nullptr == this->_modelHist)
+        return false;
 
-	for (auto i = 0; i < nParticle; i++)
-		newParticles[i] = state[resampleIndex[i]];
+    return true;
+}
 
-	for (auto i = 0; i < nParticle; i++)
-		state[i] = newParticles[i];
+void Tracker::ReSelect()
+{
+	// å­˜å‚¨æ–°çš„ç²’å­
+	SpaceState* newParticles = new SpaceState[this->_nParticle];
+
+	// ç»Ÿè®¡çš„éšæœºæ•°æ‰€å†åŒºé—´çš„ç´¢å¼•
+	auto resampleIndex = new int[this->_nParticle];
+
+	// æ ¹æ®æƒé‡é‡æ–°é‡‡æ ·
+    ImportanceSampling(resampleIndex);
+
+	for (auto i = 0; i < this->_nParticle; i++)
+		newParticles[i] = this->_particles[resampleIndex[i]];
+
+	for (auto i = 0; i < this->_nParticle; i++)
+        this->_particles[i] = newParticles[i];
 
 	delete[] newParticles;
 	delete[] resampleIndex;
 }
 
-/**
- * \brief ÖØĞÂ½øĞĞÖØÒªĞÔ²ÉÑù
- * \param wights ¶ÔÓ¦Ñù±¾È¨ÖØÊı×épi(n)
- * \param ResampleIndex ÖØ²ÉÑùË÷ÒıÊı×é(Êä³ö)
- * \param NParticle È¨ÖØÊı×é¡¢ÖØ²ÉÑùË÷ÒıÊı×éÔªËØ¸öÊı
- */
-void Tracker::ImportanceSampling(float* wights, int* ResampleIndex, int NParticle)
+/***************************************************
+ * é‡æ–°è¿›è¡Œé‡è¦æ€§é‡‡æ ·
+ * wights å¯¹åº”æ ·æœ¬æƒé‡æ•°ç»„pi(n)
+ * ResampleIndex é‡é‡‡æ ·ç´¢å¼•æ•°ç»„(è¾“å‡º)
+ * NParticle æƒé‡æ•°ç»„ã€é‡é‡‡æ ·ç´¢å¼•æ•°ç»„å…ƒç´ ä¸ªæ•°
+ ***************************************************/
+void Tracker::ImportanceSampling(int *ResampleIndex)
 {
-	// ÉêÇëÀÛ¼ÆÈ¨ÖØÊı×éÄÚ´æ£¬´óĞ¡ÎªN+1
-	auto cumulateWeight = new float[NParticle + 1];
-	// ¼ÆËãÀÛ¼ÆÈ¨ÖØ
-	NormalizeCumulatedWeight(wights, cumulateWeight, NParticle);
-	for (auto i = 0; i < NParticle; i++)
+	// ç”³è¯·ç´¯è®¡æƒé‡æ•°ç»„å†…å­˜ï¼Œå¤§å°ä¸ºN+1
+	auto cumulateWeight = new float[this->_nParticle + 1];
+	// è®¡ç®—ç´¯è®¡æƒé‡
+    NormalizeCumulatedWeight(this->_particleWeights, cumulateWeight);
+	for (auto i = 0; i < this->_nParticle; i++)
 	{
-		// Ëæ»ú²úÉúÒ»¸ö[0,1]¼ä¾ùÔÈ·Ö²¼µÄÊı
-		auto randomNumber = rand01();
-		// ËÑË÷<=randomNumberµÄ×îĞ¡Ë÷Òıj
-		auto j = BinearySearch(randomNumber, cumulateWeight, NParticle + 1);
+		// éšæœºäº§ç”Ÿä¸€ä¸ª[0,1]é—´å‡åŒ€åˆ†å¸ƒçš„æ•°
+		auto randomNumber = Utils::rand01();
+		// æœç´¢<=randomNumberçš„æœ€å°ç´¢å¼•j
+		auto j = BinearySearch(randomNumber, cumulateWeight, this->_nParticle + 1);
 
-		if (j == NParticle)
+		if (j == this->_nParticle)
 			j--;
-		// ·ÅÈëÖØ²ÉÑùË÷ÒıÊı×é
+		// æ”¾å…¥é‡é‡‡æ ·ç´¢å¼•æ•°ç»„
 		ResampleIndex[i] = j;
 	}
 
 	delete[] cumulateWeight;
 }
 
-/*
-¼ÆËã¹éÒ»»¯ÀÛ¼Æ¸ÅÂÊc'_i
-ÊäÈë²ÎÊı£º
-float * weight£º    ÎªÒ»¸öÓĞN¸öÈ¨ÖØ£¨¸ÅÂÊ£©µÄÊı×é
-int N£º             Êı×éÔªËØ¸öÊı
-Êä³ö²ÎÊı£º
-float * cumulateWeight£º ÎªÒ»¸öÓĞN+1¸öÀÛ¼ÆÈ¨ÖØµÄÊı×é£¬
-cumulateWeight[0] = 0;
-*/
-void Tracker::NormalizeCumulatedWeight(float* weight, float* cumulateWeight, int N)
+/*****************************************************
+ * è®¡ç®—å½’ä¸€åŒ–ç´¯è®¡æ¦‚ç‡c'_i
+ * float * weightï¼š    ä¸ºä¸€ä¸ªæœ‰Nä¸ªæƒé‡ï¼ˆæ¦‚ç‡ï¼‰çš„æ•°ç»„
+ * float * cumulateWeightï¼š ä¸ºä¸€ä¸ªæœ‰N+1ä¸ªç´¯è®¡æƒé‡çš„æ•°ç»„
+*****************************************************/
+void Tracker::NormalizeCumulatedWeight(float *weight, float *cumulateWeight)
 {
-	for (auto i = 0; i < N + 1; i++)
+	for (auto i = 0; i < this->_nParticle + 1; i++)
 		cumulateWeight[i] = 0;
-	for (auto i = 0; i < N; i++)
+	for (auto i = 0; i < this->_nParticle; i++)
 		cumulateWeight[i + 1] = cumulateWeight[i] + weight[i];
-	for (auto i = 0; i < N + 1; i++)
-		cumulateWeight[i] = cumulateWeight[i] / cumulateWeight[N];
-}
-
-/**
- * \brief »ñµÃÒ»¸ö[0,1]Ö®¼äµÄËæ»úÊı
- * \return ·µ»ØÒ»¸ö0µ½1Ö®¼äµÄËæ»úÊı
- */
-float Tracker::rand01()
-{
-	return (rand() / float(RAND_MAX));
-}
-
-/**
- * \brief ²úÉúÒ»¸ö¸ßË¹·Ö²¼µÄËæ»úÊı
- * \param u ¸ßË¹·Ö²¼µÄ¾ùÖµ
- * \param sigma ¸ßË¹·Ö²¼µÄ±ê×¼²î
- * \return ¸ßË¹·Ö²¼µÄËæ»úÊı
- */
-float Tracker::randGaussian(float u, float sigma) const
-{
-	float v1;
-	float s = 100.0;
-	/*
-	Ê¹ÓÃÉ¸Ñ¡·¨²úÉúÕıÌ¬·Ö²¼N(0,1)µÄËæ»úÊı(Box-Mulles·½·¨)
-	1. ²úÉú[0,1]ÉÏ¾ùÔÈËæ»ú±äÁ¿X1,X2
-	2. ¼ÆËãV1=2*X1-1,V2=2*X2-1,s=V1^2+V2^2
-	3. Èôs<=1,×ªÏò²½Öè4£¬·ñÔò×ª1
-	4. ¼ÆËãA=(-2ln(s)/s)^(1/2),y1=V1*A, y2=V2*A
-	y1,y2ÎªN(0,1)Ëæ»ú±äÁ¿
-	*/
-	while (s > 1.0)
-	{
-		auto x1 = rand01();
-		auto x2 = rand01();
-		v1 = 2 * x1 - 1;
-		auto v2 = 2 * x2 - 1;
-		s = v1*v1 + v2*v2;
-	}
-	auto y = static_cast<float>(sqrt(-2.0 * log(s) / s) * v1);
-	/*
-	¸ù¾İ¹«Ê½
-	z = sigma * y + u
-	½«y±äÁ¿×ª»»³ÉN(u,sigma)·Ö²¼
-	*/
-	return(sigma * y + u);
+	for (auto i = 0; i < this->_nParticle + 1; i++)
+		cumulateWeight[i] = cumulateWeight[i] / cumulateWeight[this->_nParticle];
 }
 
 int Tracker::BinearySearch(float v, float* NCumuWeight, int N)
@@ -222,144 +216,205 @@ int Tracker::BinearySearch(float v, float* NCumuWeight, int N)
 	return 0;
 }
 
-/*
-¼ÆËãÒ»·ùÍ¼ÏñÖĞÄ³¸öÇøÓòµÄ²ÊÉ«Ö±·½Í¼·Ö²¼
-ÊäÈë²ÎÊı£º
-int targetCenterX, targetCenterY£º          Ö¸¶¨Í¼ÏñÇøÓòµÄÖĞĞÄµã
-int halfWidthOfTarget, halfHeightOfTarget£º Ö¸¶¨Í¼ÏñÇøÓòµÄ°ë¿íºÍ°ë¸ß
-unsigned char * imgData £º                  Í¼ÏñÊı¾İ£¬°´´Ó×óÖÁÓÒ£¬´ÓÉÏÖÁÏÂµÄË³ĞòÉ¨Ãè£¬
-int width, height£º                         Í¼ÏñµÄ¿íºÍ¸ß
-Êä³ö²ÎÊı£º
-float * ColorHist£º                         ²ÊÉ«Ö±·½Í¼£¬ÑÕÉ«Ë÷Òı°´£º
-i = r * G_BIN * B_BIN + g * B_BIN + bÅÅÁĞ
-int bins£º                                  ²ÊÉ«Ö±·½Í¼µÄÌõÊıR_BIN*G_BIN*B_BIN£¨ÕâÀïÈ¡8x8x8=512£©
-*/
-void Tracker::CalcuModelHistogram(int targetCenterX, int targetCenterY,
-                                  int halfWidthOfTarget, int halfHeightOfTarget,
-                                  unsigned short* imgData,
-                                  int width, int height,
-                                  float* hist)
+/**********************************************************************
+* è®¡ç®—ç‰¹å¾ç›´æ–¹å›¾åˆ†å¸ƒ
+* è¾“å…¥å‚æ•°ï¼š
+* unsigned char * imgData ï¼š           å›¾åƒæ•°æ®ï¼ŒæŒ‰ä»å·¦è‡³å³ï¼Œä»ä¸Šè‡³ä¸‹çš„é¡ºåºæ‰«æ
+* const Orientation &orientation       ç›®æ ‡çš„æ–¹ä½
+* è¾“å‡ºå‚æ•°ï¼š
+* float *histï¼š                        ç‰¹å¾ç›´æ–¹å›¾
+**********************************************************************/
+void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation)
 {
-	// Ö±·½Í¼¸÷¸öÖµ¸³0
-	for (auto i = 0; i < _nbin; i++)
+	// ç›´æ–¹å›¾å„ä¸ªå€¼èµ‹0
+	for (auto i = 0; i < _nBin; i++)
 		hist[i] = 0.0;
 
-	// ¿¼ÂÇÌØÊâÇé¿ö£ºcenterX, centerYÔÚÍ¼ÏñÍâÃæ£¬»òÕß£¬halfWidthOfTarget<=0, halfHeightOfTarget<=0,´ËÊ±Ç¿ÖÆÁî²ÊÉ«Ö±·½Í¼Îª0
-	if ((targetCenterX < 0) || (targetCenterX >= width) || (targetCenterY < 0) || (targetCenterY >= height) || (halfWidthOfTarget <= 0) || (halfHeightOfTarget <= 0))
-		return;
+	// è€ƒè™‘ç‰¹æ®Šæƒ…å†µï¼šcenterX, centerYåœ¨å›¾åƒå¤–é¢ï¼Œæˆ–è€…ï¼ŒhalfWidthOfTarget<=0, halfHeightOfTarget<=0,æ­¤æ—¶å¼ºåˆ¶ç›´æ–¹å›¾ä¸º0
+    if ((orientation._centerX < 0)
+        || (orientation._centerY < 0)
+        || (orientation._centerX >= this->_width)
+        || (orientation._centerY >= this->_height)
+        || (orientation._halfWidthOfTarget <= 0)
+        || (orientation._halfHeightOfTarget <= 0))
+        return;
 
-	// ¼ÆËãÊµ¼Ê¸ß¿íºÍÇøÓòÆğÊ¼µã, ³¬³ö·¶Î§µÄ»°¾ÍÓÃ»­µÄ¿òµÄ±ß½çÀ´¸³ÖµÁ£×ÓµÄÇøÓò
-	auto xBeg = targetCenterX - halfWidthOfTarget;
-	auto yBeg = targetCenterY - halfHeightOfTarget;
+	// è®¡ç®—å®é™…é«˜å®½å’ŒåŒºåŸŸèµ·å§‹ç‚¹, è¶…å‡ºèŒƒå›´çš„è¯å°±ç”¨ç”»çš„æ¡†çš„è¾¹ç•Œæ¥èµ‹å€¼ç²’å­çš„åŒºåŸŸ
+	auto xBeg = orientation._centerX - orientation._halfWidthOfTarget;
+	auto yBeg = orientation._centerY - orientation._halfHeightOfTarget;
 	if (xBeg < 0) xBeg = 0;
 	if (yBeg < 0) yBeg = 0;
 
-	auto xEnd = targetCenterX + halfWidthOfTarget;
-	auto yEnd = targetCenterY + halfHeightOfTarget;
-	if (xEnd >= width) xEnd = width - 1;
-	if (yEnd >= height) yEnd = height - 1;
+	auto xEnd = orientation._centerX + orientation._halfWidthOfTarget;
+	auto yEnd = orientation._centerY + orientation._halfHeightOfTarget;
+	if (xEnd >= this->_width ) xEnd = this->_width - 1;
+	if (yEnd >= this->_height) yEnd = this->_height - 1;
 
-	// ¼ÆËã°ë¾¶Æ½·½a^2
-	auto squareOfRadius = halfWidthOfTarget*halfWidthOfTarget + halfHeightOfTarget*halfHeightOfTarget;
+	// è®¡ç®—ç›®æ ‡çš„å¤–æ¥BoundingBoxçš„å®½é«˜
+	auto bxBeg = orientation._centerX - 2 * orientation._halfWidthOfTarget;
+	auto byBeg = orientation._centerY - 2 * orientation._halfHeightOfTarget;
+	if (bxBeg < 0) bxBeg = 0;
+	if (byBeg < 0) byBeg = 0;
 
-	// ¹éÒ»»¯ÏµÊı
-	float f = 0.0;
+	auto bxEnd = orientation._centerX + 2 * orientation._halfWidthOfTarget;
+	auto byEnd = orientation._centerY + 2 * orientation._halfHeightOfTarget;
+	if (bxEnd >= this->_width ) bxEnd = this->_width - 1;
+	if (byEnd >= this->_height) byEnd = this->_height - 1;
+
+	// è®¡ç®—ç›®æ ‡åŒºåŸŸçš„åƒç´ å€¼å‡å€¼
+	auto sum = 0;
+	for(int r = yBeg; r <= yEnd; ++r)
+	{
+		for(int c = xBeg; c <= xEnd; ++c)
+		{
+			sum += imageData[r * this->_width + c];
+		}
+	}
+	auto avgInter = (float)(sum * 1.0) / (orientation._halfHeightOfTarget * orientation._halfWidthOfTarget * 4);
+
+	// è®¡ç®—ç›®æ ‡å¤–æ¥BoundingBoxçš„åƒç´ å‡å€¼
+	sum = 0;
+	for(int r = byBeg; r < byEnd; ++ r)
+	{
+		for(int c = bxBeg; c < bxEnd; ++ c)
+		{
+			sum += imageData[r * this->_width + c];
+		}
+	}
+	auto avgBox = (float)(sum * 1.0) / ((yEnd - yBeg + 1) * (yEnd - yBeg + 1));
+
+	// è®¡ç®—é¢ç§¯
+	auto area = 0;
+	for(int r = yBeg; r <= yEnd; ++r)
+	{
+		for(int c = xBeg; c <= xEnd; ++ c)
+		{
+			if((float)imageData[r * this->_width + c] - avgInter > 0.00001)
+				area ++;
+		}
+	}
+
+	// è®¡ç®—é™„åŠ ç‰¹å¾
+	auto sumHist = 0.0;
+	// å¯¹æ¯”åº¦
+	hist[ BaseBin + 0] = avgInter /avgBox;
+	sumHist += hist[BaseBin + 0];
+	// å‡å€¼ï¼ˆè¿›è¡Œå½’ä¸€åŒ–ï¼‰
+	hist[BaseBin + 1] = avgInter * 1.0 / (1 << 14);
+	sumHist += hist[BaseBin + 1];
+	// é¢ç§¯ï¼ˆå½’ä¸€åŒ–ï¼‰
+	hist[BaseBin + 2] = area * 1.0 / (orientation._halfHeightOfTarget * orientation._halfWidthOfTarget * 4);
+	sumHist += hist[BaseBin + 2];
+
+	// è®¡ç®—åŠå¾„å¹³æ–¹a^2
+    auto squareOfRadius = orientation._halfWidthOfTarget * orientation._halfWidthOfTarget +
+                          orientation._halfHeightOfTarget * orientation._halfHeightOfTarget;
+
+	// å½’ä¸€åŒ–ç³»æ•°
+	float f = sumHist;
 
 	for (auto y = yBeg; y <= yEnd; y++)
 	{
 		for (auto x = xBeg; x <= xEnd; x++)
 		{
-			auto v = imgData[y * width + x] >> SHIFT;
-			//°Ñµ±Ç°rgb»»³ÉÒ»¸öË÷Òı
+			auto v = imageData[y * this->_width + x] >> SHIFT;
+			//æŠŠå½“å‰rgbæ¢æˆä¸€ä¸ªç´¢å¼•
 			auto index = v;
 
-			auto squareOfRadiusFromCurPixelToCenter = ((y - targetCenterY) * (y - targetCenterY) + (x - targetCenterX) * (x - targetCenterX));
-			// ¼ÆËãµ±Ç°ÏñËØµ½ÖĞĞÄµãµÄ°ë¾¶Æ½·½r^2
+            auto squareOfRadiusFromCurPixelToCenter = (
+                    (y - orientation._halfHeightOfTarget) * (y - orientation._halfHeightOfTarget) +
+                    (x - orientation._halfWidthOfTarget) * (x - orientation._halfWidthOfTarget));
+			// è®¡ç®—å½“å‰åƒç´ åˆ°ä¸­å¿ƒç‚¹çš„åŠå¾„å¹³æ–¹r^2
 			auto r2 = static_cast<float>(squareOfRadiusFromCurPixelToCenter * 1.0 / squareOfRadius);
-			// k(r) = 1-r^2, |r| < 1; ÆäËûÖµ k(r) = 0 £¬Ó°ÏìÁ¦
+			// k(r) = 1-r^2, |r| < 1; å…¶ä»–å€¼ k(r) = 0 ï¼Œå½±å“åŠ›
 			auto k = 1 - r2;
 			f = f + k;
 
-			// ¼ÆËãºËÃÜ¶È¼ÓÈ¨»Ò¶ÈÖ±·½Í¼
+			// è®¡ç®—æ ¸å¯†åº¦åŠ æƒç°åº¦ç›´æ–¹å›¾
 			hist[index] = hist[index] + k;
 		}
 	}
 
-	// ¹éÒ»»¯Ö±·½Í¼
-	for (auto i = 0; i < _nbin; i++)
+	// å½’ä¸€åŒ–ç›´æ–¹å›¾
+	for (auto i = 0; i < _nBin; i++)
 		hist[i] = hist[i] / f;
 }
 
-/**
- * \brief ¸ù¾İÏµÍ³×´Ì¬·½³ÌÇóÈ¡×´Ì¬Ô¤²âÁ¿, S(t) = A S(t-1) + W(t-1), ÆäÖĞW(t-1)±íÊ¾¸ßË¹ÔëÉù
- * \param state ´ıÇóµÄ×´Ì¬Á¿Êı×é
- * \param NParticle ´ıÇó×´Ì¬¸öÊı
- */
-void Tracker::Propagate(SpaceState* state, int NParticle)
+/***********************************************************
+ * æ ¹æ®ç³»ç»ŸçŠ¶æ€æ–¹ç¨‹æ±‚å–çŠ¶æ€é¢„æµ‹é‡,
+ * S(t) = A S(t-1) + W(t-1), å…¶ä¸­W(t-1)è¡¨ç¤ºé«˜æ–¯å™ªå£°
+ ***********************************************************/
+void Tracker::Propagate()
 {
-	float randomNumbers[7];
+    float randomNumbers[7];
 
-	// ¶ÔÃ¿Ò»¸ö×´Ì¬ÏòÁ¿state[i](¹²N¸ö)½øĞĞ¸üĞÂ; ¼ÓÈë¾ùÖµÎª0µÄËæ»ú¸ßË¹ÔëÉù
-	for (auto i = 0; i < NParticle; i++)
-	{
-		// ²úÉú7¸öËæ»ú¸ßË¹·Ö²¼µÄÊı
-		for (auto j = 0; j < 7; j++)
-			randomNumbers[j] = randGaussian(0, static_cast<float>(0.6));
+    // å¯¹æ¯ä¸€ä¸ªçŠ¶æ€å‘é‡state[i](å…±Nä¸ª)è¿›è¡Œæ›´æ–°; åŠ å…¥å‡å€¼ä¸º0çš„éšæœºé«˜æ–¯å™ªå£°
+    for (auto i = 0; i < this->_nParticle; i++)
+    {
+        // äº§ç”Ÿ7ä¸ªéšæœºé«˜æ–¯åˆ†å¸ƒçš„æ•°
+		Utils::RandomGaussian(randomNumbers, 7);
 
-		state[i].centerX = static_cast<int>(state[i].centerX + state[i].v_xt * _DELTA_T + randomNumbers[0] * state[i]._halfWidthOfTarget + 0.5);
-		state[i].centerY = static_cast<int>(state[i].centerY + state[i].v_yt * _DELTA_T + randomNumbers[1] * state[i]._halfHeightOfTarget + 0.5);
-		state[i].v_xt = static_cast<float>(state[i].v_xt + randomNumbers[2] * _VELOCITY_DISTURB);
-		state[i].v_yt = static_cast<float>(state[i].v_yt + randomNumbers[3] * _VELOCITY_DISTURB);
-		state[i]._halfWidthOfTarget = static_cast<int>(state[i]._halfWidthOfTarget + state[i]._halfWidthOfTarget * state[i].at_dot + randomNumbers[4] * _SCALE_DISTURB + 0.5);
-		state[i]._halfHeightOfTarget = static_cast<int>(state[i]._halfHeightOfTarget + state[i]._halfHeightOfTarget * state[i].at_dot + randomNumbers[5] * _SCALE_DISTURB + 0.5);
-		state[i].at_dot = static_cast<float>(state[i].at_dot + randomNumbers[6] * _SCALE_CHANGE_D);
+        _particles[i]._orientation._centerX = static_cast<int>(_particles[i]._orientation._centerX +
+                                                               _particles[i].v_xt * _DELTA_T +
+                                                               randomNumbers[0] *
+                                                               _particles[i]._orientation._halfWidthOfTarget +
+                                                               0.5);
+        _particles[i]._orientation._centerY = static_cast<int>(_particles[i]._orientation._centerY +
+                                                               _particles[i].v_yt * _DELTA_T +
+                                                               randomNumbers[1] *
+                                                               _particles[i]._orientation._halfHeightOfTarget +
+                                                               0.5);
+        _particles[i].v_xt = _particles[i].v_xt + randomNumbers[2] * _VELOCITY_DISTURB;
+        _particles[i].v_yt = _particles[i].v_yt + randomNumbers[3] * _VELOCITY_DISTURB;
+        _particles[i]._orientation._halfWidthOfTarget = static_cast<int>(_particles[i]._orientation._halfWidthOfTarget +
+                                                                         _particles[i]._orientation._halfWidthOfTarget *
+                                                                         _particles[i].at_dot +
+                                                                         randomNumbers[4] * _SCALE_DISTURB + 0.5);
+        _particles[i]._orientation._halfHeightOfTarget = static_cast<int>(
+                _particles[i]._orientation._halfHeightOfTarget +
+                _particles[i]._orientation._halfHeightOfTarget *
+                _particles[i].at_dot +
+                randomNumbers[5] * _SCALE_DISTURB + 0.5);
+        _particles[i].at_dot = _particles[i].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
 
-		circle(_trackingImg, cv::Point(state[i].centerX, state[i].centerY), 3, cv::Scalar(0, 255, 0), 1, 8, 3);
-	}
+//        circle(_trackingImg, cv::Point(state[i]._orientation._centerX, state[i]._orientation._centerY), 3,
+//               cv::Scalar(0, 255, 0), 1, 8, 3);
+    }
 }
 
 
-/*
-¹Û²â£¬¸ù¾İ×´Ì¬¼¯ºÏStÖĞµÄÃ¿Ò»¸ö²ÉÑù£¬¹Û²âÖ±·½Í¼£¬È»ºó
-¸üĞÂ¹À¼ÆÁ¿£¬»ñµÃĞÂµÄÈ¨ÖØ¸ÅÂÊ
-ÊäÈë²ÎÊı£º
-SPACESTATE * state£º      ×´Ì¬Á¿Êı×é
-int N£º                   ×´Ì¬Á¿Êı×éÎ¬Êı
-unsigned char * image£º   Í¼ÏñÊı¾İ£¬°´´Ó×óÖÁÓÒ£¬´ÓÉÏÖÁÏÂµÄË³ĞòÉ¨Ãè£¬
-ÑÕÉ«ÅÅÁĞ´ÎĞò£ºRGB, RGB, ...
-int width, height£º                Í¼ÏñµÄ¿íºÍ¸ß
-float * ObjectHist£º      Ä¿±êÖ±·½Í¼
-int hbins£º               Ä¿±êÖ±·½Í¼ÌõÊı
-Êä³ö²ÎÊı£º
-float * weight£º          ¸üĞÂºóµÄÈ¨ÖØ
-*/
-void Tracker::Observe(SpaceState* state, float* weight, int NParticle, unsigned short* imgData, int W, int H)
+/*************************************************************
+ * è§‚æµ‹ï¼Œæ ¹æ®çŠ¶æ€é›†åˆStä¸­çš„æ¯ä¸€ä¸ªé‡‡æ ·ï¼Œè§‚æµ‹ç›´æ–¹å›¾ï¼Œç„¶å
+ * æ›´æ–°ä¼°è®¡é‡ï¼Œè·å¾—æ–°çš„æƒé‡æ¦‚ç‡
+ * unsigned char * imageï¼š   å›¾åƒæ•°æ®ï¼ŒæŒ‰ä»å·¦è‡³å³ï¼Œä»ä¸Šè‡³ä¸‹çš„é¡ºåºæ‰«æ
+**************************************************************/
+void Tracker::Observe(unsigned short *imageData)
 {
-	float * hist = new float[_nbin];
+	float * hist = new float[_nBin];
 
-	for (auto i = 0; i < NParticle; i++)
+	for (auto i = 0; i < this->_nParticle; i++)
 	{
-		// (1) ¼ÆËã²ÊÉ«Ö±·½Í¼·Ö²¼
-		CalcuModelHistogram(state[i].centerX, state[i].centerY, state[i]._halfWidthOfTarget, state[i]._halfHeightOfTarget, imgData, W, H, hist);
-		// (2) BhattacharyyaÏµÊı
+		// (1) è®¡ç®—å½©è‰²ç›´æ–¹å›¾åˆ†å¸ƒ
+        CalcuModelHistogram(imageData, hist, this->_particles[i]._orientation);
+		// (2) Bhattacharyyaç³»æ•°
 		float rho = CalcuBhattacharyya(hist, _modelHist);
-		// (3) ¸ù¾İ¼ÆËãµÃµÄBhattacharyyaÏµÊı¼ÆËã¸÷¸öÈ¨ÖØÖµ
-		weight[i] = CalcuWeightedPi(rho);
+		// (3) æ ¹æ®è®¡ç®—å¾—çš„Bhattacharyyaç³»æ•°è®¡ç®—å„ä¸ªæƒé‡å€¼
+		this->_particleWeights[i] = CalcuWeightedPi(rho);
 	}
 
 	delete[] hist;
 }
 
-/**
- * \brief ¼ÆËãBhattachryyaÏµÊı
- * \param histA Ö±·½Í¼A
- * \param histB Ö±·½Í¼B
- * \return BhattacharyyaÏµÊı
- */
+/*****************************************************************
+ * è®¡ç®—Bhattachryyaç³»æ•°
+ * histA ç›´æ–¹å›¾A
+ * histB ç›´æ–¹å›¾B
+ * Bhattacharyyaç³»æ•°
+ *****************************************************************/
 float Tracker::CalcuBhattacharyya(float* histA, float* histB) const
 {
 	float rho = 0.0;
-	for (auto i = 0; i < _nbin; i++)
+	for (auto i = 0; i < _nBin; i++)
 		rho = static_cast<float>(rho + sqrt(histA[i] * histB[i]));
 	return rho;
 }
@@ -371,16 +426,11 @@ float Tracker::CalcuWeightedPi(float rho) const
 	return pi_n;
 }
 
-/*
-¹À¼Æ£¬¸ù¾İÈ¨ÖØ£¬¹À¼ÆÒ»¸ö×´Ì¬Á¿×÷Îª¸ú×ÙÊä³ö
-ÊäÈë²ÎÊı£º
-SPACESTATE * state£º      ×´Ì¬Á¿Êı×é
-float * weight£º          ¶ÔÓ¦È¨ÖØ
-int N£º                   ×´Ì¬Á¿Êı×éÎ¬Êı
-Êä³ö²ÎÊı£º
-SPACESTATE * EstState£º   ¹À¼Æ³öµÄ×´Ì¬Á¿
-*/
-void Tracker::Estimation(SpaceState* particles, float* weights, int NParticle, SpaceState& EstState)
+/**********************************************
+ * ä¼°è®¡ï¼Œæ ¹æ®æƒé‡ï¼Œä¼°è®¡ä¸€ä¸ªçŠ¶æ€é‡ä½œä¸ºè·Ÿè¸ªè¾“å‡º
+ * SPACESTATE * EstStateï¼š   ä¼°è®¡å‡ºçš„çŠ¶æ€é‡
+**********************************************/
+void Tracker::Estimation(SpaceState &EstState)
 {
 	float at_dot = 0;
 	float halfWidthOfTarget = 0;
@@ -390,60 +440,85 @@ void Tracker::Estimation(SpaceState* particles, float* weights, int NParticle, S
 	float centerX = 0;
 	float centerY = 0;
 	float weight_sum = 0;
-	for (auto i = 0; i < NParticle; i++) /* ÇóºÍ */
+	for (auto i = 0; i < this->_nParticle; i++) /* æ±‚å’Œ */
 	{
-		at_dot += particles[i].at_dot * weights[i];
-		halfWidthOfTarget += particles[i]._halfWidthOfTarget * weights[i];
-		halfHeightOfTarget += particles[i]._halfHeightOfTarget * weights[i];
-		v_xt += particles[i].v_xt * weights[i];
-		v_yt += particles[i].v_yt * weights[i];
-		centerX += particles[i].centerX * weights[i];
-		centerY += particles[i].centerY * weights[i];
-		weight_sum += weights[i];
+		at_dot += _particles[i].at_dot * _particleWeights[i];
+		halfWidthOfTarget += _particles[i]._orientation._halfWidthOfTarget * _particleWeights[i];
+		halfHeightOfTarget += _particles[i]._orientation._halfHeightOfTarget * _particleWeights[i];
+		v_xt += _particles[i].v_xt * _particleWeights[i];
+		v_yt += _particles[i].v_yt * _particleWeights[i];
+		centerX += _particles[i]._orientation._centerX * _particleWeights[i];
+		centerY += _particles[i]._orientation._centerY * _particleWeights[i];
+		weight_sum += _particleWeights[i];
 	}
 
-	// ÇóÆ½¾ù
+	// æ±‚å¹³å‡
 	if (weight_sum <= 0)
-		weight_sum = 1; // ·ÀÖ¹±»0³ı£¬Ò»°ã²»»á·¢Éú
+		weight_sum = 1; // é˜²æ­¢è¢«0é™¤ï¼Œä¸€èˆ¬ä¸ä¼šå‘ç”Ÿ
 
 	EstState.at_dot = at_dot / weight_sum;
-	EstState._halfWidthOfTarget = static_cast<int>(halfWidthOfTarget / weight_sum);
-	EstState._halfHeightOfTarget = static_cast<int>(halfHeightOfTarget / weight_sum);
+	EstState._orientation._halfWidthOfTarget = static_cast<int>(halfWidthOfTarget / weight_sum);
+	EstState._orientation._halfHeightOfTarget = static_cast<int>(halfHeightOfTarget / weight_sum);
 	EstState.v_xt = v_xt / weight_sum;
 	EstState.v_yt = v_yt / weight_sum;
-	EstState.centerX = static_cast<int>(centerX / weight_sum);
-	EstState.centerY = static_cast<int>(centerY / weight_sum);
+	EstState._orientation._centerX = static_cast<int>(centerX / weight_sum);
+	EstState._orientation._centerY = static_cast<int>(centerY / weight_sum);
 }
 
 /************************************************************
-Ä£ĞÍ¸üĞÂ
-ÊäÈë²ÎÊı£º
-SPACESTATE EstState£º   ×´Ì¬Á¿µÄ¹À¼ÆÖµ
-float * TargetHist£º    Ä¿±êÖ±·½Í¼
-int bins£º              Ö±·½Í¼ÌõÊı
-float PiT£º             ãĞÖµ£¨È¨ÖØãĞÖµ£©
-unsigned char * img£º   Í¼ÏñÊı¾İ£¬RGBĞÎÊ½
-int width, height£º     Í¼Ïñ¿í¸ß
-Êä³ö£º
-float * TargetHist£º    ¸üĞÂµÄÄ¿±êÖ±·½Í¼
+ * æ¨¡å‹æ›´æ–°
+ * SPACESTATE EstState       çŠ¶æ€é‡çš„ä¼°è®¡å€¼
+ * unsigned short* imageData å›¾åƒæ•°æ®
 ************************************************************/
-void Tracker::ModelUpdate(SpaceState EstState, float* TargetHist, int bins, float PiT, unsigned short* imgData, int width, int height)
+void Tracker::ModelUpdate(SpaceState EstState, unsigned short *imageData)
 {
-	auto estimatedHist = new float[bins];
+	auto estimatedHist = new float[this->_nBin];
 
-	// (1)ÔÚ¹À¼ÆÖµ´¦¼ÆËãÄ¿±êÖ±·½Í¼
-	CalcuModelHistogram(EstState.centerX, EstState.centerY, EstState._halfWidthOfTarget, EstState._halfHeightOfTarget, imgData, width, height, estimatedHist);
-	// (2)¼ÆËãBhattacharyyaÏµÊı
-	float Bha = CalcuBhattacharyya(estimatedHist, TargetHist);
-	// (3)¼ÆËã¸ÅÂÊÈ¨ÖØ
+	// (1)åœ¨ä¼°è®¡å€¼å¤„è®¡ç®—ç›®æ ‡ç›´æ–¹å›¾
+    CalcuModelHistogram(imageData, estimatedHist, EstState._orientation);
+	// (2)è®¡ç®—Bhattacharyyaç³»æ•°
+	float Bha = CalcuBhattacharyya(estimatedHist, _modelHist);
+	// (3)è®¡ç®—æ¦‚ç‡æƒé‡
 	float Pi_E = CalcuWeightedPi(Bha);
 
-	if (Pi_E > PiT)
+	if (Pi_E > _piThreshold)
 	{
-		for (auto i = 0; i < bins; i++)
+		for (auto i = 0; i < this->_nBin; i++)
 		{
-			TargetHist[i] = static_cast<float>((1.0 - ALPHA_COEFFICIENT) * TargetHist[i] + ALPHA_COEFFICIENT * estimatedHist[i]);
+            _modelHist[i] = static_cast<float>((1.0 - ALPHA_COEFFICIENT) * _modelHist[i] +
+                                               ALPHA_COEFFICIENT * estimatedHist[i]);
 		}
 	}
 	delete[] estimatedHist;
+}
+
+/*********************************************************
+ * åŠŸèƒ½ï¼š åˆå§‹åŒ–è®¾ç½®ç²’å­çš„æ•°é‡
+ * å‚æ•°ï¼š ç²’å­æ•°é‡
+ ********************************************************/
+void Tracker::SetParticleCount(const unsigned int particleCount)
+{
+	this->_nParticle = particleCount;
+}
+
+Tracker::~Tracker()
+{
+    if (this->_particles)
+    {
+        delete[] this->_particles;
+        this->_particles = nullptr;
+    }
+    if (this->_particleWeights)
+    {
+        delete[] this->_particleWeights;
+        this->_particleWeights = nullptr;
+    }
+}
+
+bool Tracker::CheckDist(Orientation orientation, Orientation previousOrientation)
+{
+	if(abs(orientation._centerX - previousOrientation._centerX) < 5 &&
+			abs(orientation._centerY - previousOrientation._centerY) < 5)
+		return true;
+	return false;
 }

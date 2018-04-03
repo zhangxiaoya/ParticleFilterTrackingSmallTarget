@@ -1,83 +1,90 @@
 #pragma once
-#include <core/core.hpp>
+#include <opencv2/core/core.hpp>
 #include "State.h"
+#include "Orientation.h"
 
-#define BIN (8 * 256)   // Ö±·½Í¼ÌõÊı
-#define SHIFT 5 //log2( 256/8 )ÎªÒÆ¶¯Î»Êı
+#define BaseBin (16 * 256)
+#define BIN (BaseBin + 3)  // ç›´æ–¹å›¾æ¡æ•°
+#define SHIFT 4 //log2( 256/8 )ä¸ºç§»åŠ¨ä½æ•°
 
 #define SIGMA2 0.02
-#define ALPHA_COEFFICIENT 0.2 // Ä¿±êÄ£ĞÍ¸üĞÂÈ¨ÖØ
+#define ALPHA_COEFFICIENT 0.2 // ç›®æ ‡æ¨¡å‹æ›´æ–°æƒé‡
 
 class Tracker
 {
 public:
-	explicit Tracker(unsigned char width, unsigned char height)
-		: _width(width),
-		  _height(height),
-		  _curFrame(nullptr),
-		  _particles(nullptr),
-		  _DELTA_T(0.05),
-		  _VELOCITY_DISTURB(40.0),
-		  _SCALE_DISTURB(0.0),
-		  _SCALE_CHANGE_D(0.001),
-		  _nParticle(100),
-		  _modelHist(nullptr),
-		  _particleWeights(nullptr),
-		  _nbin(0),
-		  _piThreshold(0.9)
+	explicit Tracker(unsigned short width, unsigned short height)
+			: _width(width),
+			  _height(height),
+			  _curFrame(nullptr),
+			  _particles(nullptr),
+			  _DELTA_T(0.05),
+			  _VELOCITY_DISTURB(40.0),
+			  _SCALE_DISTURB(0.0),
+			  _SCALE_CHANGE_D(0.001),
+			  _nParticle(100),
+			  _modelHist(nullptr),
+			  _particleWeights(nullptr),
+			  _nBin(BIN),
+			  _piThreshold(0.9)
 	{
 	}
 
-	int ParticleTracking(unsigned short* image, int width, int height, int& centerX, int& centerY, int& halfWidthOfTarget, int& halfHeightOfTarget, float& max_weight);
+    ~Tracker();
 
-	int Initialize(int centerX, int centerY, int halfWidthOfTarget, int halfHeightOfTarget, unsigned short* imgData, int width, int height);
+	bool ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight);
+
+	bool Initialize(const Orientation &initialOrientation, unsigned short *imageData);
+
+    void SetParticleCount(unsigned int particleCount);
 
 private:
-	void ReSelect(SpaceState* state, float* weight, int nParticle);
+	void ReSelect();
 
-	static void ImportanceSampling(float* wights, int* ResampleIndex, int nParticle);
+	void ImportanceSampling(int *ResampleIndex);
 
-	static void NormalizeCumulatedWeight(float* weight, float* cumulateWeight, int nParticle);
+	void NormalizeCumulatedWeight(float *weight, float *cumulateWeight);
 
-	static float rand01();
+    static int BinearySearch(float value, float* NCumuWeight, int N);
 
-	float randGaussian(float u, float sigma) const;
+	void CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation);
 
-	static int BinearySearch(float value, float* NCumuWeight, int N);
+	void Propagate();
 
-	void CalcuModelHistogram(int centerX, int centerY, int halfWidthOfTarget, int halfHeightofTarget, unsigned short* imgData, int width, int height, float* hist);
-
-	void Propagate(SpaceState* state, int nParticle);
-
-	void Observe(SpaceState* state, float* weight, int NParticle, unsigned short* imgData, int width, int height);
+	void Observe(unsigned short *imageData);
 
 	float CalcuBhattacharyya(float* histA, float* histB) const;
 
 	float CalcuWeightedPi(float rho) const;
 
-	void Estimation(SpaceState* particles, float* weights, int NParticle, SpaceState& EstState);
+	void Estimation(SpaceState &EstState);
 
-	void ModelUpdate(SpaceState EstState, float* TargetHist, int bins, float PiT, unsigned short* imgData, int width, int height);
+	void ModelUpdate(SpaceState EstState, unsigned short *imageData);
+
+	void GenerateParticles(const Orientation &initialOrientation) const;
+
+	bool InitSpace();
 
 private:
-	unsigned char _width; // Frame size : width
-	unsigned char _height; // Frame size : height
+	unsigned short _width;  // Frame size : width
+	unsigned short _height; // Frame size : height
 
 	unsigned short* _curFrame;
 
-	SpaceState* _particles; // ×´Ì¬Êı×é
+	SpaceState* _particles; // çŠ¶æ€æ•°ç»„
 
-	cv::Mat _curFrameMat;
-	cv::Mat _trackingImg;
+    cv::Mat _trackingImg;
 
-	float _DELTA_T;          // Ö¡Æµ£¬¿ÉÒÔÎª30£¬25£¬15£¬10µÈ
-	float _VELOCITY_DISTURB; // ËÙ¶ÈÈÅ¶¯·ùÖµ
-	float _SCALE_DISTURB;    // ´°¿í¸ßÈÅ¶¯·ù¶È
-	float _SCALE_CHANGE_D;   // ³ß¶È±ä»»ËÙ¶ÈÈÅ¶¯·ù¶È
+	float _DELTA_T;          // å¸§é¢‘ï¼Œå¯ä»¥ä¸º30ï¼Œ25ï¼Œ15ï¼Œ10ç­‰
+	float _VELOCITY_DISTURB; // é€Ÿåº¦æ‰°åŠ¨å¹…å€¼
+	float _SCALE_DISTURB;    // çª—å®½é«˜æ‰°åŠ¨å¹…åº¦
+	float _SCALE_CHANGE_D;   // å°ºåº¦å˜æ¢é€Ÿåº¦æ‰°åŠ¨å¹…åº¦
 
-	int _nParticle;    // Á£×Ó¸öÊı
-	float* _modelHist; // Ä£ĞÍÖ±·½Í¼
-	float* _particleWeights; // Ã¿¸öÁ£×ÓµÄÈ¨ÖØ
-	int _nbin;          // Ö±·½Í¼ÌõÊı
-	float _piThreshold; // È¨ÖØãĞÖµ
+    unsigned int _nParticle;     // ç²’å­ä¸ªæ•°
+    unsigned int _nBin;          // ç›´æ–¹å›¾æ¡æ•°
+	float* _modelHist;  // æ¨¡å‹ç›´æ–¹å›¾
+	float* _particleWeights; // æ¯ä¸ªç²’å­çš„æƒé‡
+	float _piThreshold;      // æƒé‡é˜ˆå€¼
+	Orientation previousOrientation; // å‰ä¸€æ—¶åˆ»çš„æ–¹ä½
+	bool CheckDist(Orientation orientation, Orientation previousOrientation);
 };
