@@ -20,7 +20,7 @@ public:
 			  _particles(nullptr),
 			  _DELTA_T(0.05),
 			  _VELOCITY_DISTURB(40.0),
-			  _SCALE_DISTURB(0.0),
+			  _SCALE_DISTURB(0.001),
 			  _SCALE_CHANGE_D(0.001),
 			  _nParticle(100),
 			  _modelHist(nullptr),
@@ -75,7 +75,7 @@ private:
 
     cv::Mat _trackingImg;
 
-	float _DELTA_T;          // 帧频，可以为30，25，15，10等
+	float _DELTA_T;
 	float _VELOCITY_DISTURB; // 速度扰动幅值
 	float _SCALE_DISTURB;    // 窗宽高扰动幅度
 	float _SCALE_CHANGE_D;   // 尺度变换速度扰动幅度

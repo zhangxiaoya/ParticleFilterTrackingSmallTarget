@@ -33,7 +33,7 @@ bool Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingO
 		// 模型更新
         ModelUpdate(estimateState, imageData);
 	}
-	else // 入股失败，重新初始化粒子
+	else // 若失败，重新初始化粒子
 	{
 		GenerateParticles(previousOrientation);
 

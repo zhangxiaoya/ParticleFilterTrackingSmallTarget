@@ -45,7 +45,7 @@ int main()
     Tracker tracker(width, height);
 
     // 设置粒子数量
-    tracker.SetParticleCount(100);
+    tracker.SetParticleCount(400);
 
     // 是否是第一帧的标识
     bool isFirstFrame = true;
@@ -75,7 +75,9 @@ int main()
     // 从哪一个文件开始，目标进入视野
     int startFileIndex = 9;
     // 到哪一个文件结束，目标离开视野
-    int endFileIndex = 11;
+    int endFileIndex = 13;
+
+    int globalFrameIndex = 0;
 
     // 循环遍历所有的图像文件
     for(auto fileIdx = startFileIndex; fileIdx < endFileIndex; ++ fileIdx)
@@ -105,7 +107,7 @@ int main()
             {
                 trackingStatus = tracker.ParticleTracking(imgDataPointer, currentOrientation, maxWeight);
 
-                std::cout << "Max weight = " << std::setw(10) << maxWeight << std::endl;
+                std::cout << "Frame index = " << std::setw(6) << globalFrameIndex  ++ << ", Max weight = "<< std::setw(10) << maxWeight << std::endl;
             }
             cv::Mat ColorShow;
 
