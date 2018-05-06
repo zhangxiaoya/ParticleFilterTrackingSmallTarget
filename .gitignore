@@ -6,6 +6,8 @@
 # png file
 *.png
 
+build/
+
 # User-specific files
 *.suo
 *.user
