@@ -32,7 +32,7 @@ public:
 
     ~Tracker();
 
-	bool ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight);
+	bool ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight, cv::Mat& colorFrame);
 
 	bool Initialize(const Orientation &initialOrientation, unsigned short *imageData);
 
@@ -49,7 +49,7 @@ private:
 
 	void CalcuModelHistogram(unsigned short *imageData, float *hist, const Orientation &orientation);
 
-	void Propagate();
+	void Propagate(cv::Mat& colorFrame);
 
 	void Observe(unsigned short *imageData);
 

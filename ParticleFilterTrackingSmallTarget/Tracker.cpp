@@ -6,7 +6,7 @@
 /****************************************
  * 粒子滤波跟踪算法
  ***************************************/
-bool Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight)
+bool Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingOrientation, float &maxWeight, cv::Mat& colorFrame)
 {
 	SpaceState estimateState;
 
@@ -14,7 +14,7 @@ bool Tracker::ParticleTracking(unsigned short *imageData, Orientation &trackingO
     ReSelect();
 
 	// 传播：采样状态方程，对状态变量进行预测
-    Propagate();
+    Propagate(colorFrame);
 
 	// 观测：对状态量进行更新
     Observe(imageData);
@@ -345,7 +345,7 @@ void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const 
  * 根据系统状态方程求取状态预测量,
  * S(t) = A S(t-1) + W(t-1), 其中W(t-1)表示高斯噪声
  ***********************************************************/
-void Tracker::Propagate()
+void Tracker::Propagate(cv::Mat& colorFrame)
 {
     float randomNumbers[7];
 
@@ -378,8 +378,7 @@ void Tracker::Propagate()
                 randomNumbers[5] * _SCALE_DISTURB + 0.5);
         _particles[i].at_dot = _particles[i].at_dot + randomNumbers[6] * _SCALE_CHANGE_D;
 
-//        circle(_trackingImg, cv::Point(state[i]._orientation._centerX, state[i]._orientation._centerY), 3,
-//               cv::Scalar(0, 255, 0), 1, 8, 3);
+        circle(colorFrame, cv::Point(_particles[i]._orientation._centerX, _particles[i]._orientation._centerY), 3,cv::Scalar(255, 0, 255), 1, 8, 0);
     }
 }
 

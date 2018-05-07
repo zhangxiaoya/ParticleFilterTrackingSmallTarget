@@ -106,7 +106,7 @@ int main()
             }
             else
             {
-                trackingStatus = tracker.ParticleTracking(imgDataPointer, currentOrientation, maxWeight);
+                trackingStatus = tracker.ParticleTracking(imgDataPointer, currentOrientation, maxWeight,ColorShow);
 
 				printf("Frame index = %6d, Max weight = %10f\n", globalFrameIndex++, maxWeight);
             }
