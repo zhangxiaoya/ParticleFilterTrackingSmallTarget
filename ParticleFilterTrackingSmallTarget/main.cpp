@@ -23,7 +23,7 @@ int main()
     unsigned short height = FrameHeight;
 
     // 文件名格式定义
-    string fileFullNameFormat = "/home/ynzhang/Desktop/Data/trackingData/Segment_%02d.dat";
+    string fileFullNameFormat = "D:\\Bags\\Data\\IRData\\trackingData\\Segment_%02d.dat";
     string fileFullNameFormatResult = "/home/ynzhang/Desktop/Data/trackingData/results/Segment_%06d.png";
     // 文件名字符串存储
     char fileFullNameArr[200];
@@ -87,7 +87,7 @@ int main()
         // 读取文件流对象重新初始化读取操作
         fileReader.ResetFileStream(string(fileFullNameArr));
         // 打印文件编号
-        std::cout << "File Index = " << std::setw(6) << fileIdx << std::endl;
+		printf("File Index = %6d\n", fileIdx);
 
         // 遍历该文件中的图像
         auto frameIndex = 0;
@@ -97,23 +97,22 @@ int main()
         {
             int trackingStatus = 1;
             GetShowFrames(frame, showFrame);
+			cv::Mat ColorShow;
+			cvtColor(showFrame, ColorShow, CV_GRAY2BGR);
             if(isFirstFrame)
             {
                 tracker.Initialize(previousOrientation, imgDataPointer);
-
                 isFirstFrame = false;
             }
             else
             {
                 trackingStatus = tracker.ParticleTracking(imgDataPointer, currentOrientation, maxWeight);
 
-                std::cout << "Frame index = " << std::setw(6) << globalFrameIndex  ++ << ", Max weight = "<< std::setw(10) << maxWeight << std::endl;
+				printf("Frame index = %6d, Max weight = %10f\n", globalFrameIndex++, maxWeight);
             }
-            cv::Mat ColorShow;
 
             if(true == trackingStatus || maxWeight > 0.3)
             {
-                cvtColor(showFrame, ColorShow, CV_GRAY2BGR);
                 cv::rectangle(ColorShow,
                               cv::Point(currentOrientation._centerX - 2 - currentOrientation._halfWidthOfTarget,
                                         currentOrientation._centerY - 2 - currentOrientation._halfHeightOfTarget),
@@ -123,17 +122,17 @@ int main()
             }
             else
             {
-                std::cout << "Target Lost" << std::endl;
+				printf("Target Lost\n");
             }
             sprintf(fileFullNameArrResult, fileFullNameFormatResult.c_str(), frameIndex);
             frameIndex++;
 
             imshow("Frame", ColorShow);
-            cv::imwrite(fileFullNameArrResult, ColorShow);
+//            cv::imwrite(fileFullNameArrResult, ColorShow);
 
             cv::waitKey(10);
         }
-        std::cout << "All frame count is " << frameIndex << std::endl;
+		printf("All frame count is %d\n", frameIndex);
         cv::waitKey(1);
     }
 
