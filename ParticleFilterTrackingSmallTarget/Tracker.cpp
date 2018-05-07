@@ -322,8 +322,8 @@ void Tracker::CalcuModelHistogram(unsigned short *imageData, float *hist, const 
 			auto index = v;
 
             auto squareOfRadiusFromCurPixelToCenter = (
-                    (y - orientation._halfHeightOfTarget) * (y - orientation._halfHeightOfTarget) +
-                    (x - orientation._halfWidthOfTarget) * (x - orientation._halfWidthOfTarget));
+                    (y - orientation._centerY) * (y - orientation._centerY) +
+                    (x - orientation._centerX) * (x - orientation._centerX));
 			// 计算当前像素到中心点的半径平方r^2
 			auto r2 = static_cast<float>(squareOfRadiusFromCurPixelToCenter * 1.0 / squareOfRadius);
 			// k(r) = 1-r^2, |r| < 1; 其他值 k(r) = 0 ，影响力
