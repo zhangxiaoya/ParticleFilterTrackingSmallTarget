@@ -16,6 +16,8 @@
 
 void GetShowFrames(const Mat &frame, Mat &showFrame);
 
+void GetShowFrameWithMaxMinAvg(const Mat& frame, Mat& showFrame);
+
 int main()
 {
     // 定义图像宽和高
@@ -96,7 +98,8 @@ int main()
         while (fileReader.GetOneFrame(frame, imgDataPointer))
         {
             int trackingStatus = 1;
-            GetShowFrames(frame, showFrame);
+			GetShowFrameWithMaxMinAvg(frame, showFrame);
+//            GetShowFrames(frame, showFrame);
 			cv::Mat ColorShow;
 			cvtColor(showFrame, ColorShow, CV_GRAY2BGR);
             if(isFirstFrame)
@@ -155,4 +158,40 @@ void GetShowFrames(const Mat &frame, Mat &showFrame)
             ptrOriginal[c] = static_cast<unsigned char>(pixelValue & 0x00ff);
         }
     }
+}
+
+void GetShowFrameWithMaxMinAvg(const Mat& frame, Mat& showFrame)
+{
+	unsigned short maxValue = 0;
+	unsigned short minValue = 1 << 14;
+	unsigned short outlier = 1 << 14;
+
+	for(auto r = 0; r < frame.rows; ++ r)
+	{
+		auto ptr = frame.ptr<unsigned short>(r);
+		for(auto c = 0; c < frame.cols; ++ c)
+		{
+			if(ptr[c] >= outlier)
+				continue;
+			if (maxValue < ptr[c])
+				maxValue = ptr[c];
+			if (minValue > ptr[c])
+				minValue = ptr[c];
+		}
+	}
+
+	int len = static_cast<int>(maxValue - minValue + 1);
+
+	double ratio = len / 256.0;
+	for(auto r = 0; r < frame.rows; ++r)
+	{
+		auto ptr = frame.ptr<unsigned short>(r);
+		auto srcPtr = showFrame.ptr<uchar>(r);
+
+		for(auto c=  0; c < frame.cols; ++c)
+		{
+			auto x = (ptr[c] - minValue) / ratio;
+			srcPtr[c] = x;
+		}
+	}
 }
