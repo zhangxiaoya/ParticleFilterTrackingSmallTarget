@@ -25,8 +25,8 @@ int main()
     unsigned short height = FrameHeight;
 
     // 文件名格式定义
-    string fileFullNameFormat = "D:\\Bags\\Data\\IRData\\trackingData\\Segment_%02d.dat";
-    string fileFullNameFormatResult = "/home/ynzhang/Desktop/Data/trackingData/results/Segment_%06d.png";
+    string fileFullNameFormat = "/home/runisys/Desktop/data/trackingData/Segment_%02d.dat";
+    string fileFullNameFormatResult = "/home/runisys/Desktop/data/trackingData/frames/frame_%06d.png";
     // 文件名字符串存储
     char fileFullNameArr[200];
     char fileFullNameArrResult[200];
@@ -109,13 +109,15 @@ int main()
             }
             else
             {
-                trackingStatus = tracker.ParticleTracking(imgDataPointer, currentOrientation, maxWeight,ColorShow);
+                trackingStatus = tracker.ParticleTracking(imgDataPointer, currentOrientation, maxWeight, ColorShow,
+                                                          false);
 
 				printf("Frame index = %6d, Max weight = %10f\n", globalFrameIndex++, maxWeight);
             }
 
             if(true == trackingStatus || maxWeight > 0.3)
             {
+                if(true == false)
                 cv::rectangle(ColorShow,
                               cv::Point(currentOrientation._centerX - 2 - currentOrientation._halfWidthOfTarget,
                                         currentOrientation._centerY - 2 - currentOrientation._halfHeightOfTarget),
@@ -130,8 +132,8 @@ int main()
             sprintf(fileFullNameArrResult, fileFullNameFormatResult.c_str(), frameIndex);
             frameIndex++;
 
-            imshow("Frame", ColorShow);
-//            cv::imwrite(fileFullNameArrResult, ColorShow);
+            imshow("Result Frame", ColorShow);
+            cv::imwrite(fileFullNameArrResult, ColorShow);
 
             cv::waitKey(10);
         }

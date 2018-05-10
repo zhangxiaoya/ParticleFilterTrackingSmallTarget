@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(ParticleFilterTrackingSmallTarget)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
